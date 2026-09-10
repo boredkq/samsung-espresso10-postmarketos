@@ -63,7 +63,13 @@ cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
 
 echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
-pmbootstrap -y build --arch=armv7 linux-postmarketos-omap
+if ! pmbootstrap -y build --arch=armv7 linux-postmarketos-omap; then
+    echo "================================================================="
+    echo "PMBOOTSTRAP LOG (LAST 250 LINES):"
+    echo "================================================================="
+    cat /home/runner/.local/var/pmbootstrap/log.txt | tail -n 250 || true
+    exit 1
+fi
 
 echo "[3/5] Сборка пакета устройства device-samsung-espresso10..."
 pmbootstrap -y build --arch=armv7 device-samsung-espresso10
