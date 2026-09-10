@@ -45,13 +45,13 @@ cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
 
 echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
-pmbootstrap build --arch=armv7 linux-postmarketos-omap
+pmbootstrap -y build --arch=armv7 linux-postmarketos-omap
 
 echo "[3/5] Сборка пакета устройства device-samsung-espresso10..."
-pmbootstrap build --arch=armv7 device-samsung-espresso10
+pmbootstrap -y build --arch=armv7 device-samsung-espresso10
 
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
-pmbootstrap install \
+pmbootstrap -y install \
     --android-recovery-zip \
     --recovery-install-partition="$TARGET_PARTITION" \
     --ui="$UI" \
