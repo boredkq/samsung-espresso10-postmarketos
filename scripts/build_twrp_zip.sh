@@ -6,13 +6,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET_PARTITION="${1:-data}"  # По умолчанию: data (12.1 ГБ DATAFS), также поддерживается: external_sd
-UI="${2:-xfce4}"               # Рекомендуется xfce4
+TARGET_PARTITION="${1:-data}"               # По умолчанию: data (12.1 ГБ DATAFS), также: external_sd
+UI="${2:-xfce4}"                            # Рекомендуется xfce4 (легковесный 2D)
+USER_NAME="${PMOS_USER:-user}"              # Имя пользователя по умолчанию
+USER_PASSWORD="${PMOS_PASSWORD:-147147}"    # Пароль по умолчанию для входа
 
 echo "================================================================="
 echo " Сборка TWRP Recovery ZIP для Samsung Galaxy Tab 2 10.1"
 echo " Целевой раздел: $TARGET_PARTITION"
 echo " Окружение (UI): $UI"
+echo " Пользователь:   $USER_NAME"
+echo " Пароль:         $USER_PASSWORD"
 echo "================================================================="
 
 if ! command -v pmbootstrap &> /dev/null; then
@@ -21,12 +25,18 @@ if ! command -v pmbootstrap &> /dev/null; then
     exit 1
 fi
 
-# Получаем путь к aports
-PMAPORTS_DIR="$(pmbootstrap config aports 2>/dev/null || true)"
-if [ -z "$PMAPORTS_DIR" ] || [ ! -d "$PMAPORTS_DIR" ]; then
-    echo "Инициализация pmbootstrap..."
-    pmbootstrap init
-    PMAPORTS_DIR="$(pmbootstrap config aports)"
+WORK_DIR="$HOME/.local/var/pmbootstrap"
+PMAPORTS_DIR="$WORK_DIR/cache_git/pmaports"
+
+# Автоматическая неинтерактивная настройка pmbootstrap при необходимости
+if [ ! -d "$PMAPORTS_DIR" ]; then
+    echo "Клонирование pmaports в $PMAPORTS_DIR..."
+    mkdir -p "$(dirname "$PMAPORTS_DIR")"
+    git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS_DIR"
+    pmbootstrap config work "$WORK_DIR"
+    pmbootstrap config aports "$PMAPORTS_DIR"
+    pmbootstrap config device samsung-espresso10
+    pmbootstrap config ui "$UI"
 fi
 
 echo "[1/5] Копирование пропатченных пакетов в pmaports..."
@@ -44,6 +54,10 @@ echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITI
 pmbootstrap install \
     --android-recovery-zip \
     --recovery-install-partition="$TARGET_PARTITION" \
+    --ui="$UI" \
+    --user="$USER_NAME" \
+    --password="$USER_PASSWORD" \
+    --no-fde \
     --extra-packages="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"
 
 echo "[5/5] Экспорт собранного архива..."
@@ -63,7 +77,8 @@ echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
 echo "1. Скопируйте $ZIP_FILE на MicroSD карту или через adb sideload"
 echo "2. Загрузите планшет в TWRP (зажмите Power + Volume Down)"
 echo "3. В TWRP:"
-echo "   - Очистка (Wipe): Wipe -> Advanced Wipe -> System, Data, Cache (Factory Reset)"
+echo "   - Очистка (Wipe): Wipe -> Advanced Wipe -> System, Data, Cache"
 echo "   - Установка (Install): выберите ZIP-архив и свайпните для прошивки"
 echo "   - Перезагрузка (Reboot System)"
+echo "Логин по умолчанию: $USER_NAME | Пароль: $USER_PASSWORD"
 echo "================================================================="

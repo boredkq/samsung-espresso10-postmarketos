@@ -1,0 +1,64 @@
+name: Build postmarketOS TWRP ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      partition:
+        description: 'Target installation partition (data = 12.1 GB DATAFS, external_sd = MicroSD card)'
+        required: true
+        default: 'data'
+      ui:
+        description: 'Desktop Environment (xfce4 is strongly recommended for OMAP4430)'
+        required: true
+        default: 'xfce4'
+  push:
+    branches:
+      - fix_samsung_espresso10_port
+      - main
+      - master
+
+jobs:
+  build:
+    name: Build Kernel & TWRP Flashable ZIP
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 \
+            python3-pip \
+            git \
+            openssl \
+            sudo \
+            bash \
+            xz-utils \
+            util-linux \
+            qemu-user-static \
+            binfmt-support
+
+      - name: Install pmbootstrap
+        run: |
+          pip install --user --break-system-packages pmbootstrap
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Build TWRP Recovery ZIP
+        env:
+          PMOS_USER: user
+          PMOS_PASSWORD: "147147"
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chmod +x scripts/build_twrp_zip.sh
+          ./scripts/build_twrp_zip.sh "${{ github.event.inputs.partition || 'data' }}" "${{ github.event.inputs.ui || 'xfce4' }}"
+
+      - name: Upload TWRP ZIP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmos-samsung-espresso10-twrp-zip
+          path: output/*.zip
+          retention-days: 14
+          if-no-files-found: error
