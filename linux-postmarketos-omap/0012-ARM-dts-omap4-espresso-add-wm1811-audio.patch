@@ -1,0 +1,127 @@
+From 7d4982103f1b4a2e5d9c71a3e819b02a9b31d4e1 Mon Sep 17 00:00:00 2001
+From: Nikola <nikola@postmarketos.org>
+Date: Thu, 10 Sep 2026 14:00:00 +0300
+Subject: [PATCH] ARM: dts: omap4-espresso: add Wolfson WM1811 audio and McBSP3
+
+Add support for the Wolfson Microelectronics WM1811 audio codec on
+Samsung Galaxy Tab 2 (espresso). The codec is connected to I2C1 at
+address 0x1a and uses McBSP3 (remuxed from ABE PDM pins) for the
+primary digital audio interface (AIF1).
+
+Also add the simple-audio-card sound node binding McBSP3 and WM1811.
+
+Signed-off-by: Nikola <nikola@postmarketos.org>
+---
+ .../boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 62 +++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
+
+diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
+index 558dc3c..a81f3d2 100644
+--- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
++++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
+@@ -170,6 +170,41 @@
+ 		enable-active-high;
+ 	};
+ 
++	reg_codec: regulator-codec-en {
++		compatible = "regulator-fixed";
++		regulator-name = "codec_ldo_en";
++		pinctrl-names = "default";
++		pinctrl-0 = <&codec_pins>;
++		gpios = <&gpio2 13 GPIO_ACTIVE_HIGH>; /* GPIO_45 */
++		startup-delay-us = <20000>;
++		enable-active-high;
++		regulator-boot-on;
++		regulator-always-on;
++	};
++
++	sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,name = "espresso10-sound";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,bitclock-master = <&sound_codec>;
++		simple-audio-card,frame-master = <&sound_codec>;
++
++		simple-audio-card,widgets =
++			"Speaker", "Speaker",
++			"Headphone", "Headphone Jack",
++			"Microphone", "Main Mic";
++
++		simple-audio-card,routing =
++			"Speaker", "SPKOUTLN",
++			"Speaker", "SPKOUTLP",
++			"Speaker", "SPKOUTRN",
++			"Speaker", "SPKOUTRP",
++			"Headphone Jack", "HPOUT1L",
++			"Headphone Jack", "HPOUT1R",
++			"IN1LP", "Main Mic",
++			"IN1LN", "Main Mic";
++
++		sound_cpu: simple-audio-card,cpu {
++			sound-dai = <&mcbsp3>;
++		};
++
++		sound_codec: simple-audio-card,codec {
++			sound-dai = <&wm1811 0>; /* AIF1 */
++		};
++	};
++
+ 	gpio-keys {
+ 		compatible = "gpio-keys";
+ 		pinctrl-names = "default";
+@@ -230,6 +265,20 @@
+ 	};
+ };
+ 
++&omap4_pmx_core {
++	mcbsp3_pins: pinmux-mcbsp3-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)   /* abe_pdm_ul_data.abe_mcbsp3_dr */
++			OMAP4_IOPAD(0x106, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_dl_data.abe_mcbsp3_dx */
++			OMAP4_IOPAD(0x108, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_frame.abe_mcbsp3_clkx */
++			OMAP4_IOPAD(0x10a, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_lb_clk.abe_mcbsp3_fsx */
++		>;
++	};
++
++	codec_pins: pinmux-codec-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x06e, PIN_OUTPUT | MUX_MODE3)  /* gpmc_a23.gpio_45 - CODEC_LDO_EN */
++			OMAP4_IOPAD(0x092, PIN_OUTPUT | MUX_MODE3)  /* gpmc_ncs5.gpio_101 - CODEC_CLK_REQ */
++		>;
++	};
++};
++
+ &i2c1 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&i2c1_pins>;
+@@ -250,6 +299,19 @@
+ 		interrupt-parent = <&gic>;
+ 		system-power-controller;
+ 	};
++
++	wm1811: codec@1a {
++		compatible = "wlf,wm1811", "wlf,wm8994";
++		reg = <0x1a>;
++
++		AVDD2-supply = <&reg_codec>;
++		CPVDD-supply = <&reg_codec>;
++		DBVDD-supply = <&ldo5>;
++		SPKVDD1-supply = <&reg_codec>;
++		SPKVDD2-supply = <&reg_codec>;
++
++		wlf,ldo1ena = <&gpio2 13 GPIO_ACTIVE_HIGH>;
++		#sound-dai-cells = <1>;
++	};
+ };
+ 
++&mcbsp3 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&mcbsp3_pins>;
++	#sound-dai-cells = <0>;
++};
++
+ #include "twl6032.dtsi"
+ #include "twl6030_omap4.dtsi"
+-- 
+2.45.0

@@ -1,0 +1,40 @@
+From 9a1c8f420b987a6d321045e89a12bc78df902341 Mon Sep 17 00:00:00 2001
+From: Nikola <nikola@postmarketos.org>
+Date: Thu, 10 Sep 2026 14:10:00 +0300
+Subject: [PATCH] ARM: dts: omap4-espresso: fix WiFi power cycling on reboot
+
+On warm reboot, the Broadcom BCM4330 SDIO chip fails to re-initialize
+because reg_espresso_wlan was marked as regulator-always-on, preventing
+a clean power cycle and reset.
+
+Add reset-gpios with GPIO_104 (active-low) and timing delays to
+wlan_pwrseq, and remove regulator-always-on so mmc-pwrseq can properly
+toggle power to the chip during SDIO bus reset.
+
+Signed-off-by: Nikola <nikola@postmarketos.org>
+---
+ .../boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi   | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
+index 558dc3c..b92fa10 100644
+--- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
++++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
+@@ -95,7 +95,6 @@
+ 		regulator-min-microvolt = <2000000>;
+ 		gpio = <&gpio4 8 GPIO_ACTIVE_HIGH>; /* GPIO_104 */
+ 		startup-delay-us = <70000>;
+-		regulator-always-on;
+ 		enable-active-high;
+ 	};
+ 
+@@ -103,6 +102,10 @@
+ 		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&gpio4 8 GPIO_ACTIVE_LOW>; /* GPIO_104 */
++		post-power-on-delay-ms = <100>;
++		power-off-delay-us = <10000>;
+ 		clocks = <&twl 0>;
+ 		clock-names = "ext_clock";
+ 	};
+-- 
+2.45.0

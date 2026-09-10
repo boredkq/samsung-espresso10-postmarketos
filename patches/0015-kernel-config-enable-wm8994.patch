@@ -1,0 +1,14 @@
+--- a/config-postmarketos-omap.armv7
++++ b/config-postmarketos-omap.armv7
+@@ -4826,7 +4826,10 @@
+ # CONFIG_MFD_TI_LMU is not set
+ # CONFIG_MFD_TPS65086 is not set
+ # CONFIG_MFD_TPS65910 is not set
+-# CONFIG_MFD_WM8994 is not set
++CONFIG_MFD_WM8994=y
++CONFIG_REGULATOR_WM8994=y
++CONFIG_GPIO_WM8994=y
++CONFIG_SND_SOC_WM8994=m
+ # CONFIG_MFD_ROHM_BD718XX is not set
+ # CONFIG_MFD_SY7636A is not set
+ # end of Multifunction device drivers

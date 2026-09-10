@@ -1,0 +1,100 @@
+From 6418e8fe6b80d906ac5a1d3570dd92ab0e7ec3e8 Mon Sep 17 00:00:00 2001
+From: Hansem Ro <hansemro@outlook.com>
+Date: Wed, 12 May 2021 18:26:38 -0700
+Subject: [PATCH] regulator: twl6030: Add clk32kg support
+
+Needed for BCM4330/wl1271 WiFi reference 32kHz sleep clock.
+Ensure CLK32KG regulator resource is defined and kept always-on.
+
+Signed-off-by: Hansem Ro <hansemro@outlook.com>
+Signed-off-by: Nikola <nikola@postmarketos.org>
+---
+ arch/arm/boot/dts/ti/omap/twl6030.dtsi |  5 +++++
+ drivers/regulator/twl6030-regulator.c  | 20 ++++++++++++++++++++
+ include/linux/mfd/twl.h                |  1 +
+ 3 files changed, 26 insertions(+)
+
+diff --git a/arch/arm/boot/dts/ti/omap/twl6030.dtsi b/arch/arm/boot/dts/ti/omap/twl6030.dtsi
+index 4eee313..5fff123 100644
+--- a/arch/arm/boot/dts/ti/omap/twl6030.dtsi
++++ b/arch/arm/boot/dts/ti/omap/twl6030.dtsi
+@@ -97,6 +97,11 @@
+ 		#pwm-cells = <2>;
+ 	};
+ 
++	clk32kg: regulator-clk32kg {
++		compatible = "ti,twl6030-clk32kg";
++		regulator-always-on;
++	};
++
+ 	gpadc {
+ 		compatible = "ti,twl6030-gpadc";
+ 		interrupts = <3>;
+diff --git a/drivers/regulator/twl6030-regulator.c b/drivers/regulator/twl6030-regulator.c
+index 8ee55a0..b947ac1 100644
+--- a/drivers/regulator/twl6030-regulator.c
++++ b/drivers/regulator/twl6030-regulator.c
+@@ -314,6 +314,12 @@ static const struct regulator_ops twl6030fixed_ops = {
+ 	.get_status	= twl6030reg_get_status,
+ };
+ 
++static const struct regulator_ops twl6030_fixed_resource = {
++	.enable		= twl6030reg_enable,
++	.disable	= twl6030reg_disable,
++	.is_enabled	= twl6030reg_is_enabled,
++};
++
+ /*
+  * SMPS status and control
+  */
+@@ -574,6 +580,18 @@ static const struct twlreg_info TWLFIXED_INFO_##label = { \
+ 		}, \
+ 	}
+ 
++#define TWL6030_FIXED_RESOURCE(label, offset, turnon_delay) \
++static const struct twlreg_info TWLFIXED_INFO_##label = { \
++	.base = offset, \
++	.id = 0, \
++	.desc = { \
++		.name = #label, \
++		.id = TWL6030_REG_##label, \
++		.ops = &twl6030_fixed_resource, \
++		.type = REGULATOR_VOLTAGE, \
++		.owner = THIS_MODULE, \
++		.enable_time = turnon_delay, \
++		}, \
++	}
++
+ TWL6030_ADJUSTABLE_SMPS(VDD1);
+ TWL6030_ADJUSTABLE_SMPS(VDD2);
+ TWL6030_ADJUSTABLE_SMPS(VDD3);
+@@ -620,6 +638,7 @@ TWL6030_FIXED_LDO(VDAC, 0x64, 1800, 0);
+ TWL6030_FIXED_LDO(VUSB, 0x70, 3300, 0);
+ TWL6030_FIXED_LDO(V1V8, 0x16, 1800, 0);
+ TWL6030_FIXED_LDO(V2V1, 0x1c, 2100, 0);
++TWL6030_FIXED_RESOURCE(CLK32KG, 0x35, 0);
+ 
+ static const struct of_device_id twl_of_match[] = {
+ 	{ .compatible = "ti,twl6030-vdd1", .data = &TWL6030_INFO_VDD1, },
+@@ -638,6 +657,7 @@ static const struct of_device_id twl_of_match[] = {
+ 	{ .compatible = "ti,twl6030-vusb", .data = &TWLFIXED_INFO_VUSB, },
+ 	{ .compatible = "ti,twl6030-v1v8", .data = &TWLFIXED_INFO_V1V8, },
+ 	{ .compatible = "ti,twl6030-v2v1", .data = &TWLFIXED_INFO_V2V1, },
++	{ .compatible = "ti,twl6030-clk32kg", .data = &TWLFIXED_INFO_CLK32KG, },
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(of, twl_of_match);
+diff --git a/include/linux/mfd/twl.h b/include/linux/mfd/twl.h
+index b73e210..981af53 100644
+--- a/include/linux/mfd/twl.h
++++ b/include/linux/mfd/twl.h
+@@ -467,6 +467,7 @@ enum {
+ 	TWL6030_REG_VUSB,
+ 	TWL6030_REG_V1V8,
+ 	TWL6030_REG_V2V1,
++	TWL6030_REG_CLK32KG,
+ 	TWL6030_REG_LAST = TWL6030_REG_V2V1,
+ };
+ 
+-- 
+2.45.0

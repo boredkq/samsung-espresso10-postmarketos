@@ -1,0 +1,56 @@
+# Reference: <https://postmarketos.org/devicepkg>
+maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
+pkgname=device-samsung-espresso10
+pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
+pkgver=8
+pkgrel=1
+url="https://postmarketos.org"
+license="MIT"
+arch="armv7"
+options="!check !archcheck"
+depends="
+	firmware-samsung-espresso
+	linux-postmarketos-omap
+	mkbootimg
+	postmarketos-base
+	upower
+	alsa-ucm-conf
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	espresso10-sound.conf
+	HiFi.conf
+	UPower.conf
+	espresso-env.sh
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+
+	# ALSA UCM2 audio configuration
+	install -Dm644 "$srcdir"/espresso10-sound.conf \
+		"$pkgdir"/usr/share/alsa/ucm2/conf.d/espresso10-sound/espresso10-sound.conf
+	install -Dm644 "$srcdir"/HiFi.conf \
+		"$pkgdir"/usr/share/alsa/ucm2/omap/espresso10-sound/HiFi.conf
+
+	# Battery protection (prevent 0% discharge bootloop)
+	install -Dm644 "$srcdir"/UPower.conf \
+		"$pkgdir"/etc/UPower/UPower.conf
+
+	# 2D/Software GL rendering optimizations
+	install -Dm755 "$srcdir"/espresso-env.sh \
+		"$pkgdir"/etc/profile.d/espresso.sh
+}
+
+sha512sums="
+01810aeb4fe4a0925eed79e50f69c015b5abb4ac6406168686d1bb434eb16e4ef754b145f52d3bc51af7f0e5a17c91e59c6fd5b928ab26fd17e92a3aee6c1f71  deviceinfo
+8dca9a3aa29379716f7b6a84f6347e7fca5955588ffdaf4554cf6f545e1ae6e77be1d0b64423635d5458d034d8292080a2931b70e9fb4b6be3c682e2edf3744e  espresso10-sound.conf
+dd10df05ded750c5521ab961701fab444f1aece53ca0f254e20dcb46c23d18a752fb7259b2039aa0deb1ffcee20bc27d8915a801751217a31c91ba3e6b110cb6  HiFi.conf
+89aac7677c81d785a38674f9a5afb30eaa211dd20c997ad1cd4d7cee7ede93338826617b829536a7473ac29e381f12ff9b146ca97706752b9460fe54b691879d  UPower.conf
+6060a3cec6df58bafbb188e7e3a50ddbf4b1bb40130431b362c8a776ce66e566027e47e73de25485111da37e7a93aefbd6af417d389a7c6907f6867ec52d5c9f  espresso-env.sh
+"
