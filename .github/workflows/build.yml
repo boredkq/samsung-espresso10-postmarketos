@@ -43,8 +43,10 @@ jobs:
 
       - name: Install pmbootstrap
         run: |
-          pip install --user --break-system-packages pmbootstrap
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          sudo apt-get install -y multipath-tools
+          git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /tmp/pmbootstrap
+          sudo ln -sf /tmp/pmbootstrap/pmbootstrap.py /usr/local/bin/pmbootstrap
+          pmbootstrap --version
 
       - name: Build TWRP Recovery ZIP
         env:
