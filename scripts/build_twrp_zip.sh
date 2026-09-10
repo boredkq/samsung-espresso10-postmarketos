@@ -27,16 +27,33 @@ fi
 
 WORK_DIR="$HOME/.local/var/pmbootstrap"
 PMAPORTS_DIR="$WORK_DIR/cache_git/pmaports"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
-# Автоматическая неинтерактивная настройка pmbootstrap при необходимости
+mkdir -p "$CONFIG_DIR"
+mkdir -p "$WORK_DIR"
+
+echo "Создание конфигурации pmbootstrap..."
+cat << EOF > "$CONFIG_DIR/pmbootstrap_v3.cfg"
+[pmbootstrap]
+work = $WORK_DIR
+aports = $PMAPORTS_DIR
+device = samsung-espresso10
+ui = $UI
+user = $USER_NAME
+is_release = False
+jobs = $(nproc 2>/dev/null || echo 4)
+
+[providers]
+
+[mirrors]
+EOF
+
+cp -f "$CONFIG_DIR/pmbootstrap_v3.cfg" "$CONFIG_DIR/pmbootstrap.cfg"
+
 if [ ! -d "$PMAPORTS_DIR" ]; then
     echo "Клонирование pmaports в $PMAPORTS_DIR..."
     mkdir -p "$(dirname "$PMAPORTS_DIR")"
     git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS_DIR"
-    pmbootstrap config work "$WORK_DIR"
-    pmbootstrap config aports "$PMAPORTS_DIR"
-    pmbootstrap config device samsung-espresso10
-    pmbootstrap config ui "$UI"
 fi
 
 echo "[1/5] Копирование пропатченных пакетов в pmaports..."
