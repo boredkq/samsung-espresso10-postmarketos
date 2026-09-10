@@ -174,6 +174,57 @@ heimdall flash --BOOT ~/.local/var/pmbootstrap/chroot_rootfs_samsung-espresso10/
 
 ---
 
+## 📲 Альтернатива: Сборка и прошивка ZIP-образа для TWRP Recovery
+
+Если на вашем планшете уже установлено кастомное рекавери **TWRP** (Team Win Recovery Project), вы можете собрать flashable ZIP и установить postmarketOS прямо из TWRP (с MicroSD-карты или через ADB Sideload) **без использования Odin / Heimdall**:
+
+### 1. Автоматическая сборка скриптом:
+В репозиторий добавлен готовый скрипт автоматизации:
+```bash
+# Сборка ZIP для установки в раздел внутренней памяти DATAFS (12.1 ГБ) с рабочим столом XFCE4:
+chmod +x scripts/build_twrp_zip.sh
+./scripts/build_twrp_zip.sh data xfce4
+
+# Или для установки системы на внешнюю MicroSD-карту:
+./scripts/build_twrp_zip.sh external_sd xfce4
+```
+Скрипт автоматически соберет ядро, пакет устройства, сгенерирует образ и экспортирует архив `pmos-samsung-espresso10.zip` в каталог `output/`.
+
+### 2. Ручная сборка через pmbootstrap:
+```bash
+# 1. Генерация установочного zip-архива для TWRP
+pmbootstrap install --android-recovery-zip --recovery-install-partition=data
+
+# 2. Экспорт архива
+pmbootstrap export ./output
+# Будет создан файл: ./output/pmos-samsung-espresso10.zip
+```
+> **ВАЖНО**: Параметр `--recovery-install-partition=data` указывает установщику postmarketOS использовать раздел `data` (`DATAFS` 12.1 ГБ), а не тесный `system` (`FACTORYFS` 1.4 ГБ).
+
+### 3. Прошивка через TWRP:
+
+#### Вариант A: Через MicroSD-карту (Рекомендуется)
+1. Скопируйте файл `pmos-samsung-espresso10.zip` на MicroSD-карту (через кардридер или прямо в TWRP по MTP).
+2. Вставьте карту в планшет.
+3. Выключите планшет, затем зажмите **Питание + Громкость ВНИЗ** (Power + Volume Down) для входа в TWRP.
+4. В главном меню TWRP выберите **Wipe** -> **Advanced Wipe** -> отметьте **Dalvik / ART Cache**, **Cache**, **System**, **Data** (НЕ отмечайте Micro SDCard!) -> свайпните для очистки.
+5. Нажмите **Install** -> выберите Storage: Micro SDCard -> выберите `pmos-samsung-espresso10.zip`.
+6. Свайпните **Swipe to confirm Flash**.
+   - Установщик `postmarketos-android-recovery-installer` автоматически разметит разделы `pmOS_boot` и `pmOS_root` внутри `DATAFS`, распакует rootfs и прошьет `boot.img`.
+7. Нажмите **Reboot System**.
+
+#### Вариант B: Через ADB Sideload (без SD-карты)
+1. Загрузитесь в TWRP (Power + Volume Down).
+2. Перейдите в **Advanced** -> **ADB Sideload** -> свайпните **Swipe to Start Sideload**.
+3. Подключите планшет к ПК по USB.
+4. На ПК выполните:
+   ```bash
+   adb sideload ./output/pmos-samsung-espresso10.zip
+   ```
+5. После завершения перезагрузите планшет (**Reboot System**).
+
+---
+
 ## 🔊 Проверка и тестирование на устройстве
 
 ### 1. Проверка аудио
