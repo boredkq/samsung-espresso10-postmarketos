@@ -31,6 +31,7 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$WORK_DIR"
+echo "8" > "$WORK_DIR/version"
 
 echo "Создание конфигурации pmbootstrap..."
 cat << EOF > "$CONFIG_DIR/pmbootstrap_v3.cfg"
