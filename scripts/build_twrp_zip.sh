@@ -78,27 +78,39 @@ fi
 echo "[3/5] Сборка пакета устройства device-samsung-espresso10..."
 pmbootstrap -y build --arch=armv7 device-samsung-espresso10
 
+pmbootstrap config device samsung-espresso10
+pmbootstrap config ui "$UI"
+pmbootstrap config user "$USER_NAME"
+
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
-pmbootstrap -y install \
+if ! pmbootstrap -y install \
     --android-recovery-zip \
     --recovery-install-partition="$TARGET_PARTITION" \
-    --ui="$UI" \
-    --user="$USER_NAME" \
     --password="$USER_PASSWORD" \
-    --no-fde \
-    --extra-packages="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"
+    --add="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"; then
+    echo "================================================================="
+    echo "PMBOOTSTRAP INSTALL LOG (LAST 250 LINES):"
+    echo "================================================================="
+    cat /home/runner/.local/var/pmbootstrap/log.txt | tail -n 250 || true
+    exit 1
+fi
 
 echo "[5/5] Экспорт собранного архива..."
 mkdir -p "$SCRIPT_DIR/output"
 pmbootstrap export "$SCRIPT_DIR/output"
 
 ZIP_FILE="$(find "$SCRIPT_DIR/output" -name "pmos-*.zip" | head -n 1)"
+if [ -z "$ZIP_FILE" ] || [ ! -e "$ZIP_FILE" ]; then
+    ZIP_FILE="$(find "$WORK_DIR" -name "pmos-*.zip" | head -n 1)"
+fi
 
-echo "================================================================="
-echo " СБОРКА УСПЕШНО ЗАВЕРШЕНА!"
-if [ -n "$ZIP_FILE" ] && [ -f "$ZIP_FILE" ]; then
-    echo " Файл для TWRP: $ZIP_FILE"
-    echo " Размер: $(du -h "$ZIP_FILE" | cut -f1)"
+if [ -n "$ZIP_FILE" ] && [ -e "$ZIP_FILE" ]; then
+    cp -L "$ZIP_FILE" "$SCRIPT_DIR/output/pmos-samsung-espresso10-recovery.zip"
+    FINAL_ZIP="$SCRIPT_DIR/output/pmos-samsung-espresso10-recovery.zip"
+    echo "================================================================="
+    echo " СБОРКА УСПЕШНО ЗАВЕРШЕНА!"
+    echo " Файл для TWRP: $FINAL_ZIP"
+    echo " Размер: $(du -h "$FINAL_ZIP" | cut -f1)"
 fi
 echo "================================================================="
 echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
