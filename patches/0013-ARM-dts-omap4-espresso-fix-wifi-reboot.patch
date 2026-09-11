@@ -28,7 +28,7 @@ index 558dc3c..b92fa10 100644
  		enable-active-high;
  	};
  
-@@ -103,6 +102,10 @@
+@@ -103,4 +102,7 @@
  		compatible = "mmc-pwrseq-simple";
 +		reset-gpios = <&gpio4 8 GPIO_ACTIVE_LOW>; /* GPIO_104 */
 +		post-power-on-delay-ms = <100>;

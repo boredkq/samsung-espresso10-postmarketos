@@ -47,7 +47,7 @@ index 8ee55a0..b947ac1 100644
  /*
   * SMPS status and control
   */
-@@ -574,6 +580,18 @@ static const struct twlreg_info TWLFIXED_INFO_##label = { \
+@@ -574,6 +580,20 @@ static const struct twlreg_info TWLFIXED_INFO_##label = { \
  		}, \
  	}
  

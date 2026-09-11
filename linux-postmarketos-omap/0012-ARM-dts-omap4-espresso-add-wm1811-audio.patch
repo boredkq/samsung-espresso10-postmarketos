@@ -19,7 +19,7 @@ diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch
 index 558dc3c..a81f3d2 100644
 --- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 +++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
-@@ -170,6 +170,41 @@
+@@ -170,6 +170,49 @@
  		enable-active-high;
  	};
  
@@ -69,7 +69,7 @@ index 558dc3c..a81f3d2 100644
  	gpio-keys {
  		compatible = "gpio-keys";
  		pinctrl-names = "default";
-@@ -230,6 +265,20 @@
+@@ -230,6 +265,24 @@
  	};
  };
  
@@ -94,7 +94,7 @@ index 558dc3c..a81f3d2 100644
  &i2c1 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&i2c1_pins>;
-@@ -250,6 +299,19 @@
+@@ -250,7 +299,28 @@
  		interrupt-parent = <&gic>;
  		system-power-controller;
  	};
