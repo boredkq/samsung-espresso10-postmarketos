@@ -59,6 +59,12 @@ jobs:
           restore-keys: |
             pmbootstrap-cache-${{ runner.os }}-
 
+      - name: Fix permissions on cached pmbootstrap directory
+        run: |
+          mkdir -p ~/.local/var/pmbootstrap
+          sudo chown -R $(id -u):$(id -g) ~/.local/var/pmbootstrap || true
+          sudo chmod -R 777 ~/.local/var/pmbootstrap || true
+
       - name: Build TWRP Recovery ZIP
         env:
           PMOS_USER: user
