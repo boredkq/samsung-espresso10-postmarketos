@@ -3,11 +3,12 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=1
+pkgrel=2
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
 options="!check !archcheck"
+replaces="upower"
 depends="
 	firmware-samsung-espresso
 	linux-postmarketos-omap
