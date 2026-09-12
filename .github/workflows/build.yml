@@ -48,6 +48,17 @@ jobs:
           sudo ln -sf /tmp/pmbootstrap/pmbootstrap.py /usr/local/bin/pmbootstrap
           pmbootstrap --version
 
+      - name: Cache pmbootstrap packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/var/pmbootstrap/cache_pkgs
+            ~/.local/var/pmbootstrap/packages
+            ~/.local/var/pmbootstrap/cache_git
+          key: pmbootstrap-cache-${{ runner.os }}-${{ hashFiles('linux-postmarketos-omap/**', 'device-samsung-espresso10/**') }}
+          restore-keys: |
+            pmbootstrap-cache-${{ runner.os }}-
+
       - name: Build TWRP Recovery ZIP
         env:
           PMOS_USER: user
