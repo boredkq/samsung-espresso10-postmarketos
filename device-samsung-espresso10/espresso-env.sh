@@ -8,3 +8,5 @@ export LIBGL_ALWAYS_SOFTWARE=1
 export WLR_RENDERER=pixman
 export QT_QUICK_BACKEND=software
 export QT_QPA_PLATFORMTHEME=gtk2
+export MESA_LOADER_DRIVER_OVERRIDE=swrast
+

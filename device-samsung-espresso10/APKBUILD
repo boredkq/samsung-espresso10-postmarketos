@@ -3,7 +3,7 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=3
+pkgrel=4
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
@@ -24,6 +24,7 @@ source="
 	HiFi.conf
 	UPower.conf
 	espresso-env.sh
+	10-omapdrm.conf
 "
 
 build() {
@@ -46,6 +47,10 @@ package() {
 	# 2D/Software GL rendering optimizations
 	install -Dm755 "$srcdir"/espresso-env.sh \
 		"$pkgdir"/etc/profile.d/espresso.sh
+
+	# Force 24-bit TrueColor depth in X11 to eliminate green tint & artifacts on OMAP4430
+	install -Dm644 "$srcdir"/10-omapdrm.conf \
+		"$pkgdir"/etc/X11/xorg.conf.d/10-omapdrm.conf
 }
 
 sha512sums="
@@ -53,5 +58,6 @@ sha512sums="
 8dca9a3aa29379716f7b6a84f6347e7fca5955588ffdaf4554cf6f545e1ae6e77be1d0b64423635d5458d034d8292080a2931b70e9fb4b6be3c682e2edf3744e  espresso10-sound.conf
 dd10df05ded750c5521ab961701fab444f1aece53ca0f254e20dcb46c23d18a752fb7259b2039aa0deb1ffcee20bc27d8915a801751217a31c91ba3e6b110cb6  HiFi.conf
 89aac7677c81d785a38674f9a5afb30eaa211dd20c997ad1cd4d7cee7ede93338826617b829536a7473ac29e381f12ff9b146ca97706752b9460fe54b691879d  UPower.conf
-6060a3cec6df58bafbb188e7e3a50ddbf4b1bb40130431b362c8a776ce66e566027e47e73de25485111da37e7a93aefbd6af417d389a7c6907f6867ec52d5c9f  espresso-env.sh
+3e7526638fd7876f4ba5e43180b0597fca23aa678335b42b6285eea2f36f9c5f787e275cf459af728e0a2ef444be95ae72c9a5fe95652fafa8aaf8d471a34f97  espresso-env.sh
+3798604147e07d4627e25440355a0fad112e581f3b356c60b256bd2164005fca9c906d6983740562917dedae86021be684e7706972e07e95d23957e562c3b1c6  10-omapdrm.conf
 "
