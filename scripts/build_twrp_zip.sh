@@ -69,9 +69,9 @@ pmbootstrap checksum device-samsung-espresso10
 echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
 if ! pmbootstrap -y build --arch=armv7 linux-postmarketos-omap; then
     echo "================================================================="
-    echo "PMBOOTSTRAP LOG (LAST 250 LINES):"
+    echo "PMBOOTSTRAP LOG (LAST 2000 LINES):"
     echo "================================================================="
-    cat /home/runner/.local/var/pmbootstrap/log.txt | tail -n 250 || true
+    cat "$WORK_DIR/log.txt" | tail -n 2000 || true
     exit 1
 fi
 
@@ -89,9 +89,9 @@ if ! pmbootstrap -y install \
     --password="$USER_PASSWORD" \
     --add="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"; then
     echo "================================================================="
-    echo "PMBOOTSTRAP INSTALL LOG (LAST 250 LINES):"
+    echo "PMBOOTSTRAP INSTALL LOG (LAST 2000 LINES):"
     echo "================================================================="
-    cat /home/runner/.local/var/pmbootstrap/log.txt | tail -n 250 || true
+    cat "$WORK_DIR/log.txt" | tail -n 2000 || true
     exit 1
 fi
 

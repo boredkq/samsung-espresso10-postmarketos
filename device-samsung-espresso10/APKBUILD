@@ -12,7 +12,6 @@ depends="
 	firmware-samsung-espresso
 	linux-postmarketos-omap
 	mkbootimg
-	postmarketos-base
 	upower
 	alsa-ucm-conf
 "
