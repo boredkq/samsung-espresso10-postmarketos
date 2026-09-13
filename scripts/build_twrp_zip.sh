@@ -32,6 +32,7 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$WORK_DIR"
 chmod -R 777 "$WORK_DIR" || true
+find "$WORK_DIR/packages" -name "APKINDEX.tar.gz" -delete 2>/dev/null || true
 echo "8" > "$WORK_DIR/version"
 
 echo "Создание конфигурации pmbootstrap..."

@@ -55,6 +55,8 @@ jobs:
             ~/.local/var/pmbootstrap/cache_pkgs
             ~/.local/var/pmbootstrap/packages
             ~/.local/var/pmbootstrap/cache_git
+            ~/.local/var/pmbootstrap/config_abuild
+            ~/.config/abuild
           key: pmbootstrap-cache-${{ runner.os }}-${{ hashFiles('linux-postmarketos-omap/**', 'device-samsung-espresso10/**') }}
           restore-keys: |
             pmbootstrap-cache-${{ runner.os }}-
