@@ -8,9 +8,9 @@ on:
         required: true
         default: 'data'
       ui:
-        description: 'Desktop Environment (xfce4 is strongly recommended for OMAP4430)'
+        description: 'Desktop Environment (lxqt, mate, xfce4, weston)'
         required: true
-        default: 'xfce4'
+        default: 'lxqt'
   push:
     branches:
       - fix_samsung_espresso10_port
@@ -74,7 +74,7 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           chmod +x scripts/build_twrp_zip.sh
-          ./scripts/build_twrp_zip.sh "${{ github.event.inputs.partition || 'data' }}" "${{ github.event.inputs.ui || 'xfce4' }}"
+          ./scripts/build_twrp_zip.sh "${{ github.event.inputs.partition || 'data' }}" "${{ github.event.inputs.ui || 'lxqt' }}"
 
       - name: Upload TWRP ZIP Artifact
         uses: actions/upload-artifact@v4

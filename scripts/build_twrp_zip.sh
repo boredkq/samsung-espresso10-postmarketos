@@ -7,7 +7,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_PARTITION="${1:-data}"               # По умолчанию: data (12.1 ГБ DATAFS), также: external_sd
-UI="${2:-xfce4}"                            # Рекомендуется xfce4 (легковесный 2D)
+UI="${2:-lxqt}"                            # Рекомендуется lxqt (легковесный 2D без артефактов XFCE)
 USER_NAME="${PMOS_USER:-user}"              # Имя пользователя по умолчанию
 USER_PASSWORD="${PMOS_PASSWORD:-147147}"    # Пароль по умолчанию для входа
 
