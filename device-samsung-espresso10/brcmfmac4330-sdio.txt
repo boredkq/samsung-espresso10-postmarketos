@@ -1,0 +1,19 @@
+# BCM4330 NVRAM configuration for Samsung Galaxy Tab 2 (samsung-espresso)
+manfids=0x2d0,0x44b
+chiprev=4
+boardrev=0x1
+boardtype=0x05eb
+boardflags=0x00000001
+nocbtt=1
+xtalfreq=26000
+vlistver=1
+sb20001_clockdivider=2
+cckPwrOffset=0
+ofdmPwrOffset=0
+maxp2ga0=0x5c
+pa0itssit=62
+pa0b0=5450
+pa0b1=-670
+pa0b2=-170
+sromrev=3
+wl0id=0x4330

@@ -3,7 +3,7 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=4
+pkgrel=5
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
@@ -25,6 +25,8 @@ source="
 	UPower.conf
 	espresso-env.sh
 	10-omapdrm.conf
+	brcmfmac4330-sdio.txt
+	brcmfmac4330-sdio.samsung,espresso10.txt
 "
 
 build() {
@@ -51,6 +53,12 @@ package() {
 	# Force 24-bit TrueColor depth in X11 to eliminate green tint & artifacts on OMAP4430
 	install -Dm644 "$srcdir"/10-omapdrm.conf \
 		"$pkgdir"/etc/X11/xorg.conf.d/10-omapdrm.conf
+
+	# Broadcom BCM4330 SDIO WiFi NVRAM calibration files
+	install -Dm644 "$srcdir"/brcmfmac4330-sdio.txt \
+		"$pkgdir"/lib/firmware/brcm/brcmfmac4330-sdio.txt
+	install -Dm644 "$srcdir"/brcmfmac4330-sdio.samsung,espresso10.txt \
+		"$pkgdir"/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.txt
 }
 
 sha512sums="
@@ -59,5 +67,7 @@ sha512sums="
 dd10df05ded750c5521ab961701fab444f1aece53ca0f254e20dcb46c23d18a752fb7259b2039aa0deb1ffcee20bc27d8915a801751217a31c91ba3e6b110cb6  HiFi.conf
 89aac7677c81d785a38674f9a5afb30eaa211dd20c997ad1cd4d7cee7ede93338826617b829536a7473ac29e381f12ff9b146ca97706752b9460fe54b691879d  UPower.conf
 3e7526638fd7876f4ba5e43180b0597fca23aa678335b42b6285eea2f36f9c5f787e275cf459af728e0a2ef444be95ae72c9a5fe95652fafa8aaf8d471a34f97  espresso-env.sh
-3798604147e07d4627e25440355a0fad112e581f3b356c60b256bd2164005fca9c906d6983740562917dedae86021be684e7706972e07e95d23957e562c3b1c6  10-omapdrm.conf
+1a7d350ca2df3ada82ce1027ea4e87d749adcc2226d6306e364dd6327683fae6606e0fab3d3e502123a185c043a9d04df9f922fe59acc6abf40276d60c127e6a  10-omapdrm.conf
+d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio.txt
+d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio.samsung,espresso10.txt
 "
