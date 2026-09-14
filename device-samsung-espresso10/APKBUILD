@@ -3,7 +3,7 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=6
+pkgrel=7
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
@@ -25,7 +25,7 @@ source="
 	espresso-env.sh
 	10-omapdrm.conf
 	brcmfmac4330-sdio.txt
-	brcmfmac4330-sdio.samsung,espresso10.txt
+	brcmfmac4330-sdio-samsung-espresso10.txt
 "
 
 build() {
@@ -56,7 +56,7 @@ package() {
 	# Broadcom BCM4330 SDIO WiFi NVRAM calibration files
 	install -Dm644 "$srcdir"/brcmfmac4330-sdio.txt \
 		"$pkgdir"/lib/firmware/brcm/brcmfmac4330-sdio.txt
-	install -Dm644 "$srcdir"/brcmfmac4330-sdio.samsung,espresso10.txt \
+	install -Dm644 "$srcdir"/brcmfmac4330-sdio-samsung-espresso10.txt \
 		"$pkgdir"/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.txt
 }
 
@@ -68,5 +68,5 @@ dd10df05ded750c5521ab961701fab444f1aece53ca0f254e20dcb46c23d18a752fb7259b2039aa0
 3e7526638fd7876f4ba5e43180b0597fca23aa678335b42b6285eea2f36f9c5f787e275cf459af728e0a2ef444be95ae72c9a5fe95652fafa8aaf8d471a34f97  espresso-env.sh
 1a7d350ca2df3ada82ce1027ea4e87d749adcc2226d6306e364dd6327683fae6606e0fab3d3e502123a185c043a9d04df9f922fe59acc6abf40276d60c127e6a  10-omapdrm.conf
 d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio.txt
-d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio.samsung,espresso10.txt
+d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio-samsung-espresso10.txt
 "
