@@ -11,31 +11,26 @@ wlan_pwrseq so mmc-pwrseq can properly toggle power to the chip during SDIO bus 
 
 Signed-off-by: Nikola <nikola@postmarketos.org>
 ---
- arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
+index 558dc3c..b92fa10 100644
 --- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 +++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
-@@ -150,15 +150,16 @@
- 	reg_espresso_wlan: reg_espresso_wlan {
- 		compatible = "regulator-fixed";
- 		regulator-name = "espresso_wlan";
- 		regulator-min-microvolt = <2000000>;
+@@ -94,6 +94,4 @@
  		regulator-max-microvolt = <2000000>;
 -		gpio = <&gpio4 8 GPIO_ACTIVE_HIGH>; /* GPIO_104 */
  		startup-delay-us = <70000>;
  		regulator-always-on;
 -		enable-active-high;
  	};
-
+@@ -101,4 +99,7 @@
  	wlan_pwrseq: wlan_pwrseq {
  		compatible = "mmc-pwrseq-simple";
 +		reset-gpios = <&gpio4 8 GPIO_ACTIVE_LOW>; /* GPIO_104 */
 +		post-power-on-delay-ms = <100>;
 +		power-off-delay-us = <10000>;
  		clocks = <&twl 0>;
- 		clock-names = "ext_clock";
- 	};
 -- 
 2.45.0
