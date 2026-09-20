@@ -11,8 +11,8 @@ wlan_pwrseq so mmc-pwrseq can properly toggle power to the chip during SDIO bus 
 
 Signed-off-by: Nikola <nikola@postmarketos.org>
 ---
- arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 index 558dc3c..b92fa10 100644
@@ -32,5 +32,7 @@ index 558dc3c..b92fa10 100644
 +		post-power-on-delay-ms = <100>;
 +		power-off-delay-us = <10000>;
  		clocks = <&twl 0>;
+ 		clock-names = "ext_clock";
+ 	};
 -- 
 2.45.0
