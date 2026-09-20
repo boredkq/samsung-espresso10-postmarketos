@@ -1,0 +1,80 @@
+name: Build Ubuntu Touch TWRP ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      partition:
+        description: 'Target installation partition (data = 12.1 GB DATAFS, external_sd = MicroSD card)'
+        required: true
+        default: 'data'
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build_ubuntu_touch:
+    name: Build Ubuntu Touch & Kernel TWRP Flashable ZIP
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 \
+            python3-pip \
+            git \
+            openssl \
+            sudo \
+            bash \
+            xz-utils \
+            util-linux \
+            qemu-user-static \
+            binfmt-support
+
+      - name: Install pmbootstrap
+        run: |
+          sudo apt-get install -y multipath-tools
+          git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /tmp/pmbootstrap
+          sudo ln -sf /tmp/pmbootstrap/pmbootstrap.py /usr/local/bin/pmbootstrap
+          pmbootstrap --version
+
+      - name: Cache pmbootstrap packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/var/pmbootstrap/cache_pkgs
+            ~/.local/var/pmbootstrap/packages
+            ~/.local/var/pmbootstrap/cache_git
+            ~/.local/var/pmbootstrap/config_abuild
+            ~/.config/abuild
+          key: ubuntu-touch-cache-${{ runner.os }}-${{ hashFiles('linux-postmarketos-omap/**', 'device-samsung-espresso10/**') }}
+          restore-keys: |
+            ubuntu-touch-cache-${{ runner.os }}-
+
+      - name: Fix permissions on cached pmbootstrap directory
+        run: |
+          mkdir -p ~/.local/var/pmbootstrap
+          sudo chown -R $(id -u):$(id -g) ~/.local/var/pmbootstrap || true
+          sudo chmod -R 777 ~/.local/var/pmbootstrap || true
+
+      - name: Build Ubuntu Touch Recovery ZIP
+        env:
+          PMOS_USER: ubuntu
+          PMOS_PASSWORD: "ubuntu"
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chmod +x scripts/build_ubuntu_touch_zip.sh
+          ./scripts/build_ubuntu_touch_zip.sh "${{ github.event.inputs.partition || 'data' }}"
+
+      - name: Upload Ubuntu Touch TWRP ZIP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-touch-samsung-espresso10-twrp-zip
+          path: output/ubuntu-touch-samsung-espresso10-twrp.zip
+          retention-days: 14
+          if-no-files-found: error
