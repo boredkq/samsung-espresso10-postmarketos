@@ -31,19 +31,42 @@ mkdir -p "$WORK_DIR"
 chmod -R 777 "$WORK_DIR" || true
 find "$WORK_DIR/packages" -name "APKINDEX.tar.gz" -delete 2>/dev/null || true
 
-# Сначала собираем ядро Linux OMAP 7.1.5 с исправлением Wi-Fi и звука
-echo "[1/4] Подготовка пакетов ядра OMAP..."
+cat << EOF > "$CONFIG_DIR/pmbootstrap_v3.cfg"
+[pmbootstrap]
+work = $WORK_DIR
+aports = $PMAPORTS_DIR
+device = samsung-espresso10
+ui = lxqt
+user = $USER_NAME
+is_release = False
+jobs = $(nproc 2>/dev/null || echo 4)
+
+[providers]
+
+[mirrors]
+EOF
+
+cp -f "$CONFIG_DIR/pmbootstrap_v3.cfg" "$CONFIG_DIR/pmbootstrap.cfg"
+
+if [ ! -d "$PMAPORTS_DIR" ]; then
+    echo "Клонирование pmaports в $PMAPORTS_DIR..."
+    mkdir -p "$(dirname "$PMAPORTS_DIR")"
+    git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS_DIR"
+fi
+
+echo "[1/4] Подготовка пакетов ядра OMAP и PVRports..."
+mkdir -p "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
 
 pmbootstrap checksum linux-postmarketos-omap
 pmbootstrap checksum device-samsung-espresso10
 
-echo "[2/4] Сборка ядра Linux OMAP 7.1.5..."
+echo "[2/4] Сборка ядра Linux OMAP 7.1.5 с PVRports 3D ускорением..."
 pmbootstrap -y build --arch=armv7 linux-postmarketos-omap
 pmbootstrap -y build --arch=armv7 device-samsung-espresso10
 
-# Настройка под Ubuntu LXQt / XFCE
+# Настройка под Ubuntu LXQt / Lomiri
 pmbootstrap config device samsung-espresso10
 pmbootstrap config ui lxqt
 pmbootstrap config user "$USER_NAME"
