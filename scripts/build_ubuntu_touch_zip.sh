@@ -60,8 +60,7 @@ mkdir -p "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
 
-pmbootstrap checksum linux-postmarketos-omap
-pmbootstrap checksum device-samsung-espresso10
+# Checksums are verified against git APKBUILD
 
 echo "[2/4] Сборка ядра Linux OMAP 7.1.5 с PVRports 3D ускорением..."
 pmbootstrap -y build --arch=armv7 linux-postmarketos-omap
