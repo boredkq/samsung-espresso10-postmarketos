@@ -76,5 +76,5 @@ jobs:
         with:
           name: ubuntu-touch-samsung-espresso10-twrp-zip
           path: output/ubuntu-touch-samsung-espresso10-twrp.zip
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: error
