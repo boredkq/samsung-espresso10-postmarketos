@@ -64,12 +64,17 @@ mkdir -p "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
 
+PMB_FLAGS=""
+if [ "$(id -u)" -eq 0 ]; then
+    PMB_FLAGS="--as-root"
+fi
+
 echo "Обновление контрольных сумм пакетов..."
-pmbootstrap checksum linux-postmarketos-omap
-pmbootstrap checksum device-samsung-espresso10
+pmbootstrap $PMB_FLAGS checksum linux-postmarketos-omap
+pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 
 echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
-if ! pmbootstrap -y build --arch=armv7 linux-postmarketos-omap; then
+if ! pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-postmarketos-omap; then
     echo "================================================================="
     echo "PMBOOTSTRAP LOG (LAST 2000 LINES):"
     echo "================================================================="
@@ -78,14 +83,14 @@ if ! pmbootstrap -y build --arch=armv7 linux-postmarketos-omap; then
 fi
 
 echo "[3/5] Сборка пакета устройства device-samsung-espresso10..."
-pmbootstrap -y build --arch=armv7 device-samsung-espresso10
+pmbootstrap $PMB_FLAGS -y build --arch=armv7 device-samsung-espresso10
 
-pmbootstrap config device samsung-espresso10
-pmbootstrap config ui "$UI"
-pmbootstrap config user "$USER_NAME"
+pmbootstrap $PMB_FLAGS config device samsung-espresso10
+pmbootstrap $PMB_FLAGS config ui "$UI"
+pmbootstrap $PMB_FLAGS config user "$USER_NAME"
 
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
-if ! pmbootstrap -y install \
+if ! pmbootstrap $PMB_FLAGS -y install \
     --android-recovery-zip \
     --recovery-install-partition="$TARGET_PARTITION" \
     --password="$USER_PASSWORD" \
@@ -99,7 +104,7 @@ fi
 
 echo "[5/5] Экспорт собранного архива..."
 mkdir -p "$SCRIPT_DIR/output"
-pmbootstrap export "$SCRIPT_DIR/output"
+pmbootstrap $PMB_FLAGS export "$SCRIPT_DIR/output"
 
 ZIP_FILE="$(find "$SCRIPT_DIR/output" -name "pmos-*.zip" | head -n 1)"
 if [ -z "$ZIP_FILE" ] || [ ! -e "$ZIP_FILE" ]; then

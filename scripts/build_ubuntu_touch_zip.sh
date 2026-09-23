@@ -60,21 +60,26 @@ mkdir -p "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
 
+PMB_FLAGS=""
+if [ "$(id -u)" -eq 0 ]; then
+    PMB_FLAGS="--as-root"
+fi
+
 echo "Обновление контрольных сумм пакетов..."
-pmbootstrap checksum linux-postmarketos-omap
-pmbootstrap checksum device-samsung-espresso10
+pmbootstrap $PMB_FLAGS checksum linux-postmarketos-omap
+pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 
 echo "[2/4] Сборка ядра Linux OMAP 7.1.5 с PVRports 3D ускорением..."
-pmbootstrap -y build --arch=armv7 linux-postmarketos-omap
-pmbootstrap -y build --arch=armv7 device-samsung-espresso10
+pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-postmarketos-omap
+pmbootstrap $PMB_FLAGS -y build --arch=armv7 device-samsung-espresso10
 
 # Настройка под Ubuntu LXQt / Lomiri
-pmbootstrap config device samsung-espresso10
-pmbootstrap config ui lxqt
-pmbootstrap config user "$USER_NAME"
+pmbootstrap $PMB_FLAGS config device samsung-espresso10
+pmbootstrap $PMB_FLAGS config ui lxqt
+pmbootstrap $PMB_FLAGS config user "$USER_NAME"
 
 echo "[3/4] Генерация прошиваемого архива Ubuntu Touch / Linux для TWRP..."
-if ! pmbootstrap -y install \
+if ! pmbootstrap $PMB_FLAGS -y install \
     --android-recovery-zip \
     --recovery-install-partition="$TARGET_PARTITION" \
     --password="$USER_PASSWORD" \
@@ -88,7 +93,7 @@ fi
 
 echo "[4/4] Экспорт собранного архива..."
 mkdir -p "$SCRIPT_DIR/output"
-pmbootstrap export "$SCRIPT_DIR/output"
+pmbootstrap $PMB_FLAGS export "$SCRIPT_DIR/output"
 
 ZIP_FILE="$(find "$SCRIPT_DIR/output" -name "pmos-*.zip" | head -n 1)"
 if [ -z "$ZIP_FILE" ] || [ ! -e "$ZIP_FILE" ]; then
