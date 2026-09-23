@@ -16,6 +16,8 @@ jobs:
   build_ubuntu_touch:
     name: Build Ubuntu Touch & Kernel TWRP Flashable ZIP
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -73,8 +75,19 @@ jobs:
 
       - name: Upload Ubuntu Touch TWRP ZIP Artifact
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: ubuntu-touch-samsung-espresso10-twrp-zip
           path: output/ubuntu-touch-samsung-espresso10-twrp.zip
           retention-days: 3
           if-no-files-found: error
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "postmarketOS & Ubuntu Touch TWRP Builds"
+          body: "Flashable TWRP recovery ZIP images for Samsung Galaxy Tab 2 10.1 (espresso10 / p5100 / p5110)."
+          files: output/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
