@@ -12,14 +12,14 @@ Also add the simple-audio-card sound node binding McBSP3 and WM1811.
 
 Signed-off-by: Nikola <nikola@postmarketos.org>
 ---
- arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 108 ++++++++++++++++++++
- 1 file changed, 108 insertions(+)
+ arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 98 ++++++++++++++++++--
+ 1 file changed, 98 insertions(+)
 
 diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 index 4d55c0c..53e333a 100644
 --- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 +++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
-@@ -163,6 +163,60 @@
+@@ -163,6 +163,58 @@
  		regulator-boot-on;
  	};
  
@@ -78,7 +78,7 @@ index 4d55c0c..53e333a 100644
  	pwm10: pwm-10 {
  		pinctrl-names = "default";
  		pinctrl-0 = <&pwm10_default>;
-@@ -515,6 +569,32 @@
+@@ -515,6 +567,27 @@
  			/* cam_shutter.gpio_81 - WLAN_HOST_WAKE */
  		>;
  	};
@@ -106,7 +106,7 @@ index 4d55c0c..53e333a 100644
  };
  
  &uart3 {
-@@ -546,6 +626,30 @@
+@@ -546,6 +619,31 @@
  		interrupt-parent = <&gic>;
  		system-power-controller;
  	};
