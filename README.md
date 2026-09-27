@@ -1,275 +1,185 @@
-# postmarketOS for Samsung Galaxy Tab 2 10.1 (`samsung-espresso10`)
-### P5100 (3G+Wi-Fi) / P5110 (Wi-Fi) / P5113 (Wi-Fi + IR)
+# postmarketOS & Ubuntu Touch for Samsung Galaxy Tab 2 10.1 (`samsung-espresso10`)
+### GT-P5100 (3G + Wi-Fi) / GT-P5110 (Wi-Fi) / GT-P5113 (Wi-Fi + IR)
 
-Комплексный набор исправлений и пакетов для доведения порта postmarketOS для Samsung Galaxy Tab 2 10.1 до полностью рабочего, стабильного и пригодного для повседневного использования состояния.
+[![Build postmarketOS TWRP ZIP](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build.yml/badge.svg)](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build.yml)
+[![Build Ubuntu Touch TWRP ZIP](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build_ubuntu_touch.yml/badge.svg)](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build_ubuntu_touch.yml)
+[![Latest Release](https://img.shields.io/github/v/release/boredkq/samsung-espresso10-postmarketos?label=TWRP%20Release&color=success)](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/tag/latest)
+
+Комплексный набор исправлений, пакетов и CI/CD пайплайнов для сборки и запуска современных дистрибутивов **postmarketOS** (Linux Mainline 7.1.5 + XFCE4) и **Ubuntu Touch** на планшетах Samsung Galaxy Tab 2 10.1.
 
 ---
 
-## 📋 Статус компонентов
+## 📥 Готовые сборки для TWRP (Прямое скачивание)
 
-| Компонент | Исходный статус в pmOS | Статус с нашими фиксами | Решение |
+Вам **не нужно** ничего компилировать на компьютере — готовые к прошивке через TWRP архивы автоматически собираются в облаке GitHub Actions и доступны в разделе [GitHub Releases](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/tag/latest):
+
+| Прошивка | Описание | Размер | Ссылка на скачивание |
+| :--- | :--- | :---: | :--- |
+| **postmarketOS (XFCE4)** | Полноценный легковесный Linux (Alpine), ядро 7.1.5, ALSA звук, Wi-Fi фикс, 12.1 ГБ диск | ~725 МБ | [⬇️ Скачать pmos-samsung-espresso10-recovery.zip](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10-recovery.zip) |
+| **Ubuntu Touch** | Мобильная ОС с жестовым тач-интерфейсом Lomiri, оптимизированным под планшет | ~723 МБ | [⬇️ Скачать ubuntu-touch-samsung-espresso10-twrp.zip](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/ubuntu-touch-samsung-espresso10-twrp.zip) |
+
+*Логин по умолчанию:* `user`  
+*Пароль по умолчанию:* `147147`
+
+---
+
+## 📋 Статус аппаратных компонентов
+
+| Компонент | Исходный статус в upstream | Статус в этом порте | Техническое решение |
 | :--- | :--- | :--- | :--- |
-| **Звук (Audio)** | ❌ Не работает |  **Работает** (Динамики, Наушники, Микрофон) | DTS: привязка WM1811 к I2C1 + McBSP3 + LDO GPIO45; включен драйвер `SND_SOC_WM8994`; профили ALSA UCM2 |
-| **Wi-Fi Reboot** | ❌ Ошибка перезагрузки (#1211) |  **Работает стабильно** | Убран `regulator-always-on`, добавлен `reset-gpios` в `mmc-pwrseq-simple`, добавлен TWL6030 `clk32kg` |
-| **Память / Раздел** | ⚠️ Тесный `FACTORYFS` (1.4 ГБ) |  **12.1 ГБ** (`DATAFS`) | `deviceinfo_flash_heimdall_partition_rootfs="DATAFS"` |
-| **Батарея / Bootloop** | ❌ Бутлуп при разряде до 0% |  **Защищен от глубокого разряда** | UPower автовыключение при 6-8%, правильная инициализация SMB347 |
-| **Графика / GUI** | ⚠️ Нет 3D драйвера для SGX540 |  **Плавный 2D / Pixman** | Оптимизации `espresso-env.sh` (`LIBGL_ALWAYS_SOFTWARE=1`, `WLR_RENDERER=pixman`) |
-| **Сенсорный экран** |  Работает |  Работает | Драйвер Atmel maXTouch (в ядре OMAP) |
-| **USB OTG / Зарядка**|  Работает |  Работает | Патчи Samsung P30 extcon |
+| **Звук (Audio)** | ❌ Не работает |  **Работает** (Динамики, 3.5мм наушники, микрофон) | DTS: подключение кодека Wolfson WM1811 к шинам `I2C1` + `McBSP3` + LDO `GPIO45`; ядро: драйвер `CONFIG_SND_SOC_WM8994`; профили ALSA UCM2 |
+| **Wi-Fi Reboot** | ❌ Модуль отваливался при reboot (#1211) |  **Работает стабильно** | Убран `regulator-always-on`, добавлен `reset-gpios` в `mmc-pwrseq-simple`, обеспечена непрерывная подача TWL6030 `clk32kg` |
+| **Wi-Fi NVRAM** | ⚠️ Предупреждения о калибровке |  **Калиброван** | Добавлены конфигурационные файлы NVRAM (`brcmfmac4330-sdio.txt`) с параметрами антенн для espresso10 |
+| **Память / Rootfs** | ⚠️ Тесный `FACTORYFS` (1.4 ГБ) |  **12.1 ГБ** (`DATAFS`) | `deviceinfo_flash_heimdall_partition_rootfs="DATAFS"` — система ставится в основной пользовательский раздел |
+| **Батарея / Bootloop** | ❌ Бутлуп при разряде в 0% |  **Защищен от бутлупа** | Профиль `UPower.conf` с порогом экстренного завершения работы на 6–8% емкости батареи SMB347 |
+| **Графика / GUI** | ⚠️ Нет открытого 3D драйвера SGX540 |  **Плавный 2D / Pixman + PVRports** | Оптимизации `espresso-env.sh` (`LIBGL_ALWAYS_SOFTWARE=1`, `WLR_RENDERER=pixman`), скрипт интеграции PVRports |
+| **Сенсорный экран** |  Работает |  Работает | Драйвер Atmel maXTouch (мультитач до 10 касаний) |
+| **USB OTG / Зарядка**|  Работает |  Работает | Samsung P30 extcon драйвер (OTG-хост и зарядка) |
 
 ---
 
-## 🛠️ Содержимое репозитория
+## 🛠️ Структура репозитория
 
 ```
-├── device-samsung-espresso10/          # Обновленный пакет устройства для pmaports
-│   ├── APKBUILD                        # pkgrel=1, зависимости upower, alsa-ucm-conf, установка конфигов
-│   ├── deviceinfo                      # Изменен раздел rootfs с FACTORYFS на DATAFS
-│   ├── espresso10-sound.conf           # Конфигурация входа ALSA UCM2
-│   ├── HiFi.conf                       # UCM2 HiFi профиль переключения динамиков/наушников/микрофона
-│   ├── UPower.conf                     # Настройки раннего безопасного отключения при разряде
-│   └── espresso-env.sh                 # Переменные окружения для программного рендеринга (Pixman / Mesa swrast)
+├── .github/workflows/
+│   ├── build.yml                       # CI автоматической сборки postmarketOS TWRP ZIP
+│   └── build_ubuntu_touch.yml          # CI автоматической сборки Ubuntu Touch TWRP ZIP
 │
-├── linux-postmarketos-omap/            # Ядро OMAP 7.1.5 (Linux mainline)
-│   ├── APKBUILD                        # Добавлены патчи 0012, 0013, 0014, обновлены sha512sums
-│   ├── config-postmarketos-omap.armv7  # Включены CONFIG_MFD_WM8994, CONFIG_SND_SOC_WM8994
-│   ├── 0012-ARM-dts-omap4-espresso-add-wm1811-audio.patch
-│   ├── 0013-ARM-dts-omap4-espresso-fix-wifi-reboot.patch
-│   └── 0014-regulator-twl6030-add-clk32kg-support.patch
+├── device-samsung-espresso10/          # Пакет устройства для postmarketOS / pmaports
+│   ├── APKBUILD                        # Сборка пакета с автонастройкой звука, графики и питания
+│   ├── deviceinfo                      # Описание платформы, переключение rootfs на DATAFS
+│   ├── 10-omapdrm.conf                 # Конфигурация Xorg modesetting / omapdrm
+│   ├── brcmfmac4330-sdio.txt           # NVRAM калибровка чипа Wi-Fi BCM4330
+│   ├── brcmfmac4330-sdio-samsung-espresso10.txt
+│   ├── espresso-env.sh                 # Оптимизации рендеринга для PowerVR SGX540
+│   ├── espresso10-sound.conf           # Конфигурация ALSA UCM2
+│   ├── HiFi.conf                       # UCM2 HiFi профиль переключения динамиков/наушников
+│   └── UPower.conf                     # Предотвращение глубокого разряда в 0%
 │
-├── patches/                            # Отдельные патчи для ручного наложения
-│   ├── 0012-ARM-dts-omap4-espresso-add-wm1811-audio.patch
-│   ├── 0013-ARM-dts-omap4-espresso-fix-wifi-reboot.patch
-│   ├── 0014-regulator-twl6030-add-clk32kg-support.patch
-│   └── 0015-kernel-config-enable-wm8994.patch
+├── linux-postmarketos-omap/            # Ядро Linux OMAP 7.1.5 (Mainline)
+│   ├── APKBUILD                        # Рецепт сборки ядра со всеми патчами
+│   ├── config-postmarketos-omap.armv7  # Конфигурация ядра с поддержкой WM8994, OTG, P30
+│   ├── 0001-iio-rescale-revert-logic.patch
+│   ├── 0002-hsi-dma-fix.patch
+│   ├── 0003-Add-TWL6030-power-button-support-to-twl-pwrbutton.patch
+│   ├── 0004-arm-dts-Add-barnesnoble-encore-support.patch
+│   ├── 0005-panel-Add-lg-ld070ws1-for-barnesnoble-encore.patch
+│   ├── 0006-omap4-cfi.patch
+│   ├── 0007-dt-bindings-extcon-add-Samsung-P30-connector.patch
+│   ├── 0008-extcon-add-Samsung-P30-connector-driver.patch
+│   ├── 0009-usb-musb-omap2430-handle-initial-ID-ground-transitio.patch
+│   ├── 0010-usb-phy-twl6030-add-extcon-and-external-VBUS-support.patch
+│   ├── 0011-ARM-dts-omap4-espresso-add-USB-OTG-support.patch
+│   ├── 0012-ARM-dts-omap4-espresso-add-wm1811-audio.patch       # Звук WM1811
+│   ├── 0013-ARM-dts-omap4-espresso-fix-wifi-reboot.patch        # Фикс Wi-Fi reboot
+│   └── 0014-regulator-twl6030-add-clk32kg-support.patch        # Тактирование 32кГц TWL6030
 │
-└── reference/                          # Извлеченные исходники Android 3.0.31 Samsung (для верификации)
-    ├── board_44xx_tablet.c             # Официальный pinmux и аудио-разводка
-    ├── board_espresso10_muxset.c       # Pinmux для GT-P5100 / GT-P5110
-    ├── board_espresso_jack.c           # Детекция наушников
-    ├── board_espresso_pmic.c           # Регуляторы питания и LDO
-    └── legacy_espresso_audio.c         # ALSA ASoC драйвер звука Samsung
+├── scripts/
+│   ├── build_twrp_zip.sh               # Автоматизированный скрипт сборки postmarketOS TWRP ZIP
+│   ├── build_ubuntu_touch_zip.sh       # Автоматизированный скрипт сборки Ubuntu Touch TWRP ZIP
+│   └── install_pvrports.sh             # Скрипт установки драйверов PowerVR SGX540
+│
+└── reference/                          # Референсные исходники ядра Samsung для сверки распиновки
 ```
 
 ---
 
-## 🔍 Подробности исправлений
+## 📲 Инструкция по установке через TWRP Recovery
 
-### 1. Звук (Wolfson Microelectronics WM1811 / WM8994)
-В планшетах Samsung Galaxy Tab 2 10.1 используется аудиокодек **Wolfson WM1811** (семейство WM8994), подключенный по шинам:
-- **Управление**: шина `I2C1`, адрес `0x1a` (в старом коде Samsung обозначался как `0x34 >> 1`).
-- **Питание LDO**: GPIO 45 (`&gpio2 13`), активный высокий уровень.
-- **Тактирование**: MCLK1 26 МГц от системного генератора OMAP4 через GPIO 101 (`&gpio4 5`).
-- **Аудиошина (DAI)**: OMAP4 `McBSP3` в режиме I2S (выводы ABE PDM переназначены в режим McBSP3: `AP_I2S_DIN`, `AP_I2S_DOUT`, `AP_I2S_CLK`, `AP_I2S_SYNC`).
+### Требования:
+- Планшет **Samsung Galaxy Tab 2 10.1** (GT-P5100, GT-P5110 или GT-P5113).
+- Установленное кастомное рекавери **TWRP** (рекомендуется версия 3.x).
+- MicroSD карта памяти (от 2 ГБ) **ИЛИ** установленный на компьютере `adb`.
 
-**Что сделано**:
-1. Патч `0012` активирует `&mcbsp3`, добавляет узел `wm1811` на шину `&i2c1`, настраивает `simple-audio-card` и пинмукс `abe_pdm` в режим `omap4_mcbsp3`.
-2. Конфиг ядра включает `CONFIG_MFD_WM8994=y`, `CONFIG_REGULATOR_WM8994=y`, `CONFIG_GPIO_WM8994=y`, `CONFIG_SND_SOC_WM8994=m`.
-3. Созданы профили ALSA UCM2 (`espresso10-sound.conf` и `HiFi.conf`) для автоматического переключения громкоговорителей, разъема 3.5 мм (наушников) и микрофона при использовании PulseAudio или PipeWire.
+### Пошаговая прошивка:
 
-### 2. Ошибка Wi-Fi при перезагрузке (Issue #1211)
-Планшет терял Wi-Fi модуль Broadcom BCM4330 после мягкой перезагрузки (`reboot`), модуль появлялся только после полного выключения питания.
-**Причина**: 
-1. В `reg_espresso_wlan` стоял флаг `regulator-always-on`, из-за чего контроллер питания не сбрасывал чип.
-2. В узле `wlan_pwrseq` отсутствовал пин аппаратного сброса `reset-gpios` (`&gpio4 8` / GPIO 104), из-за чего SDIO шина не могла заново инициировать handshake.
-3. Опорная частота сна 32.768 кГц от микросхемы TWL6030 (`clk32kg`) отключалась ядром при перезагрузке.
+#### Способ 1: С карты памяти MicroSD (Самый простой)
+1. Скачайте желаемый `.zip` архив из [Releases](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/tag/latest):
+   - `pmos-samsung-espresso10-recovery.zip` (для postmarketOS)
+   - `ubuntu-touch-samsung-espresso10-twrp.zip` (для Ubuntu Touch)
+2. Скопируйте архив на MicroSD карту.
+3. Выключите планшет. Зажмите и удерживайте кнопки **Питание + Громкость ВНИЗ** (Power + Volume Down, качелька ближе к кнопке питания) до появления логотипа TWRP.
+4. В главном меню TWRP:
+   - Перейдите в **Wipe** -> **Advanced Wipe**.
+   - Отметьте галочками: `System`, `Data`, `Cache`, `Dalvik / ART Cache` (**НЕ отмечайте Micro SDCard!**).
+   - Свайпните **Swipe to Wipe** для очистки.
+5. Вернитесь в главное меню -> выберите **Install** -> нажмите **Select Storage** -> выберите **Micro SDCard**.
+6. Выберите скачанный `.zip` файл и свайпните **Swipe to confirm Flash**.
+   - Встроенный установщик автоматически разметит раздел `DATAFS` (12.1 ГБ), распакует rootfs и прошьет загрузочный образ `boot.img`.
+7. По окончании нажмите **Reboot System**.
 
-**Что сделано**:
-1. Патч `0013` убирает `regulator-always-on`, добавляет `reset-gpios = <&gpio4 8 GPIO_ACTIVE_LOW>;` в `wlan_pwrseq` и привязывает тактирование `clk32kg`.
-2. Патч `0014` добавляет поддержку ресурса `clk32kg` в драйвер регуляторов `twl6030-regulator.c`.
-
-### 3. Раздел `DATAFS` вместо `FACTORYFS`
-Стандартный раздел `SYSTEM` / `FACTORYFS` планшета имеет объем всего **1.4 ГБ**, чего катастрофически не хватает для графического рабочего стола postmarketOS со всеми библиотеками, браузером и приложениями.
-**Что сделано**:
-В `deviceinfo` параметр `deviceinfo_flash_heimdall_partition_rootfs` изменен на **`"DATAFS"`** (раздел внутренней памяти объемом **12.1 ГБ**). Теперь система имеет достаточно места для установки XFCE, LibreOffice, медиаплееров и работы без сбоев из-за переполнения диска.
-
-### 4. Защита от глубокого разряда (Bootloop при 0%)
-При полном разряде батареи до 0% планшет попадал в бесконечный бутлуп зарядки: OMAP4 включался, пытался стартовать ядро, потреблял ток выше лимита контроллера заряда Summit SMB347, напряжение проседало, и планшет отключался, повторяя цикл каждые 10 секунд.
-**Что сделано**:
-Установлен `UPower.conf` с жесткими порогами:
-- `PercentageLow=15`
-- `PercentageCritical=8`
-- `PercentageAction=6`
-- `CriticalPowerAction=PowerOff`
-Планшет корректно и безопасно завершает работу до того, как батарея разрядится до критического уровня, исключая бутлуп.
-
-### 5. Графика: SGX540 и выбор рабочего окружения
-В OMAP4430 встроен графический процессор **PowerVR SGX540**. В апстриме Mesa **нет** рабочего открытого 3D-драйвера Gallium для SGX540 (существующий экспериментальный драйвер `etnaviv`/`fd`/`pvr` не поддерживает архитектуру SGX 5-й серии).
-Попытка запустить тяжелые оболочки (GNOME Shell, KDE Plasma, Phosh) приводит к компиляции шейдеров через `llvmpipe` на двух ядрах Cortex-A9, что вызывает 100% загрузку CPU, перегрев и зависание.
-
-**Рекомендованная среда**:
-- **XFCE4** (X11) — наиболее быстрая, отзывчивая и легковесная среда для OMAP4.
-- **LXQt** (X11) — также работает очень плавно.
-- **Sway / Wayfire** (Wayland) — запускать только с флагом `WLR_RENDERER=pixman`.
-
-Скрипт `espresso-env.sh` (устанавливаемый в `/etc/profile.d/espresso.sh`) автоматически выставляет:
-```sh
-export LIBGL_ALWAYS_SOFTWARE=1
-export GALLIUM_DRIVER=softpipe
-export WLR_RENDERER=pixman
-export QT_QUICK_BACKEND=software
-```
+#### Способ 2: Через ADB Sideload (Без карты памяти)
+1. Загрузите планшет в TWRP (Power + Volume Down).
+2. Подключите планшет к ПК через 30-pin кабель.
+3. В TWRP выберите: **Advanced** -> **ADB Sideload** -> свайпните для старта.
+4. На компьютере выполните команду:
+   ```bash
+   adb sideload pmos-samsung-espresso10-recovery.zip
+   ```
+5. Дождитесь передачи и распаковки (до 100%), затем перезагрузите устройство (**Reboot System**).
 
 ---
 
-## 🚀 Инструкция по сборке и установке через `pmbootstrap`
+## 💻 Локальная сборка на ПК (Linux / WSL2)
 
-Сборка осуществляется на ПК с установленным `pmbootstrap` (Linux / WSL2):
-
-### Шаг 1: Подготовка pmaports
-Склонируйте или скопируйте файлы из данного репозитория в каталог `pmaports`:
+Если вы хотите внести собственные изменения в ядро или пакеты и собрать образ самостоятельно:
 
 ```bash
-# Определите путь к вашему pmaports (обычно ~/.local/var/pmbootstrap/cache_git/pmaports)
-PMAPORTS_DIR="$(pmbootstrap config aports)"
+# 1. Установите зависимости и pmbootstrap
+sudo apt update && sudo apt install -y git python3 python3-pip openssl qemu-user-static binfmt-support
+git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /tmp/pmbootstrap
+sudo ln -sf /tmp/pmbootstrap/pmbootstrap.py /usr/local/bin/pmbootstrap
 
-# Скопируйте обновленные пакеты:
-cp -r device-samsung-espresso10 "$PMAPORTS_DIR"/device/community/
-cp -r linux-postmarketos-omap "$PMAPORTS_DIR"/device/community/
-```
+# 2. Клонируйте этот репозиторий
+git clone https://github.com/boredkq/samsung-espresso10-postmarketos.git
+cd samsung-espresso10-postmarketos
 
-### Шаг 2: Сборка пакетов
-```bash
-# 1. Сборка ядра OMAP с нашими патчами
-pmbootstrap build --arch=armv7 linux-postmarketos-omap
-
-# 2. Сборка пакета устройства
-pmbootstrap build --arch=armv7 device-samsung-espresso10
-```
-
-### Шаг 3: Инициализация образа
-Запустите `pmbootstrap init` и выберите:
-- **Vendor**: `samsung`
-- **Device**: `espresso10`
-- **User Interface**: `xfce4` (настоятельно рекомендуется для OMAP4430)
-- **Extra packages**: `alsa-utils`, `pulseaudio`, `pulseaudio-utils`, `pavucontrol`, `evtest`, `htop`
-
-### Шаг 4: Генерация образов
-```bash
-pmbootstrap install
-```
-
-### Шаг 5: Прошивка на планшет
-
-1. Переведите планшет в **Download Mode**:
-   - Выключите планшет.
-   - Зажмите и удерживайте **Питание + Громкость ВВЕРХ** (Power + Volume Up) до появления предупреждающего экрана.
-   - Нажмите **Громкость ВНИЗ** (Volume Down) для подтверждения входа в Odin / Download Mode.
-   - Подключите 30-pin USB кабель к компьютеру.
-
-2. Прошейте ядро и rootfs с помощью `pmbootstrap`:
-```bash
-# Прошивка ядра (в раздел BOOT)
-pmbootstrap flasher flash_kernel
-
-# Прошивка rootfs (автоматически запишется в DATAFS 12.1 ГБ)
-pmbootstrap flasher flash_rootfs
-```
-
-*(Альтернативно через прямой Heimdall)*:
-```bash
-heimdall flash --BOOT ~/.local/var/pmbootstrap/chroot_rootfs_samsung-espresso10/boot/boot.img \
-               --DATAFS ~/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/samsung-espresso10.img
-```
-
----
-
-## 📲 Альтернатива: Сборка и прошивка ZIP-образа для TWRP Recovery
-
-Если на вашем планшете уже установлено кастомное рекавери **TWRP** (Team Win Recovery Project), вы можете собрать flashable ZIP и установить postmarketOS прямо из TWRP (с MicroSD-карты или через ADB Sideload) **без использования Odin / Heimdall**:
-
-### 1. Автоматическая сборка в облаке через GitHub Actions (Без установки Linux на ПК)
-Если вы не хотите устанавливать Linux или настраивать виртуальные машины:
-1. Создайте репозиторий на GitHub и отправьте в него эти исходники (`git push`).
-2. В репозитории на GitHub перейдите во вкладку **Actions** -> **Build postmarketOS TWRP ZIP**.
-3. Нажмите **Run workflow**.
-4. GitHub Actions автоматически запустит сборку в облаке Ubuntu, скомпилирует ядро и выложит готовый архив в раздел **Artifacts** для загрузки!
-
-### 2. Автоматическая сборка локальным скриптом (Linux / WSL2):
-В репозиторий добавлен готовый скрипт автоматизации:
-```bash
-# Сборка ZIP для установки в раздел внутренней памяти DATAFS (12.1 ГБ) с рабочим столом XFCE4:
+# 3. Запустите сборку postmarketOS TWRP ZIP (на раздел data 12.1 ГБ с XFCE4):
 chmod +x scripts/build_twrp_zip.sh
 ./scripts/build_twrp_zip.sh data xfce4
 
-# Или для установки системы на внешнюю MicroSD-карту:
-./scripts/build_twrp_zip.sh external_sd xfce4
+# Или сборку Ubuntu Touch:
+chmod +x scripts/build_ubuntu_touch_zip.sh
+./scripts/build_ubuntu_touch_zip.sh
 ```
-Скрипт автоматически соберет ядро, пакет устройства, сгенерирует образ и экспортирует архив `pmos-samsung-espresso10.zip` в каталог `output/`.
-
-### 2. Ручная сборка через pmbootstrap:
-```bash
-# 1. Генерация установочного zip-архива для TWRP
-pmbootstrap install --android-recovery-zip --recovery-install-partition=data
-
-# 2. Экспорт архива
-pmbootstrap export ./output
-# Будет создан файл: ./output/pmos-samsung-espresso10.zip
-```
-> **ВАЖНО**: Параметр `--recovery-install-partition=data` указывает установщику postmarketOS использовать раздел `data` (`DATAFS` 12.1 ГБ), а не тесный `system` (`FACTORYFS` 1.4 ГБ).
-
-### 3. Прошивка через TWRP:
-
-#### Вариант A: Через MicroSD-карту (Рекомендуется)
-1. Скопируйте файл `pmos-samsung-espresso10.zip` на MicroSD-карту (через кардридер или прямо в TWRP по MTP).
-2. Вставьте карту в планшет.
-3. Выключите планшет, затем зажмите **Питание + Громкость ВНИЗ** (Power + Volume Down) для входа в TWRP.
-4. В главном меню TWRP выберите **Wipe** -> **Advanced Wipe** -> отметьте **Dalvik / ART Cache**, **Cache**, **System**, **Data** (НЕ отмечайте Micro SDCard!) -> свайпните для очистки.
-5. Нажмите **Install** -> выберите Storage: Micro SDCard -> выберите `pmos-samsung-espresso10.zip`.
-6. Свайпните **Swipe to confirm Flash**.
-   - Установщик `postmarketos-android-recovery-installer` автоматически разметит разделы `pmOS_boot` и `pmOS_root` внутри `DATAFS`, распакует rootfs и прошьет `boot.img`.
-7. Нажмите **Reboot System**.
-
-#### Вариант B: Через ADB Sideload (без SD-карты)
-1. Загрузитесь в TWRP (Power + Volume Down).
-2. Перейдите в **Advanced** -> **ADB Sideload** -> свайпните **Swipe to Start Sideload**.
-3. Подключите планшет к ПК по USB.
-4. На ПК выполните:
-   ```bash
-   adb sideload ./output/pmos-samsung-espresso10.zip
-   ```
-5. После завершения перезагрузите планшет (**Reboot System**).
+Готовые архивы будут сохранены в каталоге `output/`.
 
 ---
 
-## 🔊 Проверка и тестирование на устройстве
+## ⚙️ Полезные команды после первого включения
 
-### 1. Проверка аудио
-После загрузки войдите по SSH или откройте терминал:
-
+### 1. Подключение к Wi-Fi
 ```bash
-# Проверка определения звуковой карты в ALSA:
+# Поиск сетей:
+nmcli dev wifi list
+
+# Подключение:
+nmcli dev wifi connect "Имя_Сети" password "Пароль"
+```
+
+### 2. Проверка звука
+```bash
+# Проверка детекции аудиокодека WM1811:
 cat /proc/asound/cards
-# Должно отображаться:
-# 0 [espresso10sound]: espresso10-sound - espresso10-sound
+# Вывод: 0 [espresso10sound]: espresso10-sound - espresso10-sound
 
-# Проверка распознавания аудиокодека WM1811:
-dmesg | grep -i wm8994
-
-# Тест вывода звука (динамики):
+# Тест стереодинамиков:
 speaker-test -c 2 -r 44100 -twav
 
 # Управление громкостью:
-alsamixer -c 0
+alsamixer
 # или графически через pavucontrol
 ```
 
-### 2. Проверка Wi-Fi и перезагрузки
-```bash
-# Проверка наличия интерфейса wlan0:
-ip link show wlan0
-
-# Подключение к сети через nmcli:
-nmcli dev wifi list
-nmcli dev wifi connect "MySSID" password "MyPassword"
-
-# Проверка мягкой перезагрузки:
-sudo reboot
-# После загрузки Wi-Fi должен сразу же подняться без зависаний!
-```
-
-### 3. Проверка объема свободного места
+### 3. Проверка свободного места
 ```bash
 df -h /
-# Должно показывать около 11-12 GB на разделе rootfs!
+# Должно отображаться ~11-12 ГБ свободного пространства на разделе DATAFS
 ```
+
+---
+
+## 🤝 Благодарности
+- Сообществу [postmarketOS](https://postmarketos.org/) за поддержку ARM mainline платформ.
+- Проекту [Unlegacy-Android](https://github.com/Unlegacy-Android) за референсные наработки драйверов для OMAP4430.
+- Texas Instruments и Wolfson Microelectronics за открытую документацию аудио-стека.
