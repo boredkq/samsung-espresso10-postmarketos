@@ -12,15 +12,15 @@ Also add the simple-audio-card sound node binding McBSP3 and WM1811.
 
 Signed-off-by: Nikola <nikola@postmarketos.org>
 ---
- .../boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 62 +++++++++++++++++++++
- 1 file changed, 62 insertions(+)
+ arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 90 ++++++++++++++++++++
+ 1 file changed, 90 insertions(+)
 
 diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
-index 558dc3c..a81f3d2 100644
+index 4d55c0c..53e333a 100644
 --- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 +++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
-@@ -170,6 +170,49 @@
- 		enable-active-high;
+@@ -163,6 +163,49 @@
+ 		regulator-boot-on;
  	};
  
 +	reg_codec: regulator-codec-en {
@@ -66,14 +66,14 @@ index 558dc3c..a81f3d2 100644
 +		};
 +	};
 +
- 	gpio-keys {
- 		compatible = "gpio-keys";
+ 	pwm10: pwm-10 {
  		pinctrl-names = "default";
-@@ -230,6 +265,24 @@
+ 		pinctrl-0 = <&pwm10_default>;
+@@ -515,6 +558,22 @@
+ 			/* cam_shutter.gpio_81 - WLAN_HOST_WAKE */
+ 		>;
  	};
- };
- 
-+&omap4_pmx_core {
++
 +	mcbsp3_pins: pinmux-mcbsp3-pins {
 +		pinctrl-single,pins = <
 +			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)   /* abe_pdm_ul_data.abe_mcbsp3_dr */
@@ -89,12 +89,10 @@ index 558dc3c..a81f3d2 100644
 +			OMAP4_IOPAD(0x092, PIN_OUTPUT | MUX_MODE3)  /* gpmc_ncs5.gpio_101 - CODEC_CLK_REQ */
 +		>;
 +	};
-+};
-+
- &i2c1 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&i2c1_pins>;
-@@ -250,7 +299,28 @@
+ };
+ 
+ &uart3 {
+@@ -546,6 +605,27 @@
  		interrupt-parent = <&gic>;
  		system-power-controller;
  	};
@@ -112,16 +110,15 @@ index 558dc3c..a81f3d2 100644
 +		wlf,ldo1ena = <&gpio2 13 GPIO_ACTIVE_HIGH>;
 +		#sound-dai-cells = <1>;
 +	};
- };
- 
-+&mcbsp3 {
++};
++
+&mcbsp3 {
 +	status = "okay";
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mcbsp3_pins>;
 +	#sound-dai-cells = <0>;
-+};
-+
+ };
+ 
  #include "twl6032.dtsi"
- #include "twl6030_omap4.dtsi"
 -- 
 2.45.0
