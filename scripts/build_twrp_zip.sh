@@ -116,8 +116,14 @@ if [ -n "$ZIP_FILE" ] && [ -e "$ZIP_FILE" ]; then
     FINAL_ZIP="$SCRIPT_DIR/output/pmos-samsung-espresso10-recovery.zip"
     echo "================================================================="
     echo " СБОРКА УСПЕШНО ЗАВЕРШЕНА!"
-    echo " Файл для TWRP: $FINAL_ZIP"
+    echo " Файл для TWRP (полная ОС): $FINAL_ZIP"
     echo " Размер: $(du -h "$FINAL_ZIP" | cut -f1)"
+fi
+
+# Сборка отдельного легковесного TWRP ZIP только с ядром и модулями
+if [ -f "$SCRIPT_DIR/scripts/package_kernel_zip.sh" ]; then
+    chmod +x "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
+    "$SCRIPT_DIR/scripts/package_kernel_zip.sh" || true
 fi
 echo "================================================================="
 echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
