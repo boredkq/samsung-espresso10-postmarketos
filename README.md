@@ -31,7 +31,7 @@
 | **Wi-Fi NVRAM** | ⚠️ Предупреждения о калибровке | ✅ **Калиброван** | Добавлены файлы NVRAM-калибровки (`brcmfmac4330-sdio.txt`) с параметрами антенн espresso10 |
 | **Память / Rootfs** | ⚠️ Тесный `FACTORYFS` (1.4 ГБ) | ✅ **12.1 ГБ** (`DATAFS`) | `deviceinfo_flash_heimdall_partition_rootfs="DATAFS"` — система устанавливается в основной раздел |
 | **Батарея / Bootloop** | ❌ Бутлуп при разряде в 0% | ✅ **Защищен от бутлупа** | Профиль `UPower.conf` с порогом экстренного выключения на 6–8% емкости батареи SMB347 |
-| **Графика / GUI** | ⚠️ Нет открытого 3D драйвера SGX540 | ✅ **Плавный 2D / Pixman** | Оптимизации `espresso-env.sh` (`LIBGL_ALWAYS_SOFTWARE=1`, `WLR_RENDERER=pixman`), софтварный OpenGL (swrast / llvmpipe) |
+| **Графика / 3D** | ⚠️ Нет открытого 3D драйвера в Mesa | ✅ **Плавный 2D / Pixman + PVRports 3D** | Нативно: Pixman 2D (ARM NEON) + софтверный Mesa; для 3D: скрипт `scripts/install_pvrports.sh` подключает репозиторий [PVRports](https://gitlab.com/pvrports/pvrports) (SGX540 DDK) |
 | **Сенсорный экран** | ✅ Работает | ✅ **Работает** | Драйвер Atmel maXTouch (мультитач до 10 касаний) |
 | **USB OTG / Зарядка**| ✅ Работает | ✅ **Работает** | Samsung P30 extcon драйвер (OTG-хост и зарядка) |
 
@@ -151,6 +151,17 @@ alsamixer
 ```bash
 df -h /
 # Должно отображаться ~11-12 ГБ свободного пространства на разделе DATAFS
+```
+
+### 4. Включение 3D аппаратного ускорения PVRports (PowerVR SGX540)
+Для установки проприетарных библиотек DDK 1.17 и классического DRI-драйвера Mesa из репозитория [PVRports](https://gitlab.com/pvrports/pvrports):
+```bash
+# Подключитесь к Wi-Fi и запустите скрипт установки:
+chmod +x scripts/install_pvrports.sh
+sudo ./scripts/install_pvrports.sh
+
+# Перезагрузите планшет:
+sudo reboot
 ```
 
 ---
