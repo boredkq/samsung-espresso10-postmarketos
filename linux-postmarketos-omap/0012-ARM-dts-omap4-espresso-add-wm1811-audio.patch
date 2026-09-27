@@ -12,27 +12,36 @@ Also add the simple-audio-card sound node binding McBSP3 and WM1811.
 
 Signed-off-by: Nikola <nikola@postmarketos.org>
 ---
- arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 90 ++++++++++++++++++++
- 1 file changed, 90 insertions(+)
+ arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi | 108 ++++++++++++++++++++
+ 1 file changed, 108 insertions(+)
 
 diff --git a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 index 4d55c0c..53e333a 100644
 --- a/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
 +++ b/arch/arm/boot/dts/ti/omap/omap4-samsung-espresso-common.dtsi
-@@ -163,6 +163,49 @@
+@@ -163,6 +163,60 @@
  		regulator-boot-on;
  	};
  
-+	reg_codec: regulator-codec-en {
++	reg_vbatt: regulator-vbatt {
 +		compatible = "regulator-fixed";
-+		regulator-name = "codec_ldo_en";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&codec_pins>;
-+		gpios = <&gpio2 13 GPIO_ACTIVE_HIGH>; /* GPIO_45 */
-+		startup-delay-us = <20000>;
-+		enable-active-high;
-+		regulator-boot-on;
++		regulator-name = "vbatt";
++		regulator-min-microvolt = <3700000>;
++		regulator-max-microvolt = <3700000>;
 +		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	reg_codec_clk: regulator-codec-clk {
++		compatible = "regulator-fixed";
++		regulator-name = "codec_clk_req";
++		pinctrl-names = "default";
++		pinctrl-0 = <&codec_clk_pins>;
++		gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>; /* GPIO 101: 26M_EN / CODEC_CLK_REQ */
++		startup-delay-us = <10000>;
++		enable-active-high;
++		regulator-always-on;
++		regulator-boot-on;
 +	};
 +
 +	sound {
@@ -69,30 +78,35 @@ index 4d55c0c..53e333a 100644
  	pwm10: pwm-10 {
  		pinctrl-names = "default";
  		pinctrl-0 = <&pwm10_default>;
-@@ -515,6 +558,22 @@
+@@ -515,6 +569,32 @@
  			/* cam_shutter.gpio_81 - WLAN_HOST_WAKE */
  		>;
  	};
 +
 +	mcbsp3_pins: pinmux-mcbsp3-pins {
 +		pinctrl-single,pins = <
-+			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)   /* abe_pdm_ul_data.abe_mcbsp3_dr */
-+			OMAP4_IOPAD(0x106, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_dl_data.abe_mcbsp3_dx */
-+			OMAP4_IOPAD(0x108, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_frame.abe_mcbsp3_clkx */
-+			OMAP4_IOPAD(0x10a, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_lb_clk.abe_mcbsp3_fsx */
++			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)   /* abe_pdm_ul_data.abe_mcbsp3_dr - AP_I2S_DIN */
++			OMAP4_IOPAD(0x106, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_dl_data.abe_mcbsp3_dx - AP_I2S_DOUT */
++			OMAP4_IOPAD(0x108, PIN_INPUT | MUX_MODE1)   /* abe_pdm_frame.abe_mcbsp3_clkx - AP_I2S_CLK */
++			OMAP4_IOPAD(0x10a, PIN_INPUT | MUX_MODE1)   /* abe_pdm_lb_clk.abe_mcbsp3_fsx - AP_I2S_SYNC */
 +		>;
 +	};
 +
 +	codec_pins: pinmux-codec-pins {
 +		pinctrl-single,pins = <
-+			OMAP4_IOPAD(0x06e, PIN_OUTPUT | MUX_MODE3)  /* gpmc_a23.gpio_45 - CODEC_LDO_EN */
-+			OMAP4_IOPAD(0x092, PIN_OUTPUT | MUX_MODE3)  /* gpmc_ncs5.gpio_101 - CODEC_CLK_REQ */
++			OMAP4_IOPAD(0x06a, PIN_OUTPUT | MUX_MODE3)  /* gpmc_a21.gpio_45 - CODEC_LDO_EN */
++		>;
++	};
++
++	codec_clk_pins: pinmux-codec-clk-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x090, PIN_OUTPUT | MUX_MODE3)  /* gpmc_ncs4.gpio_101 - CODEC_CLK_REQ (26M_EN) */
 +		>;
 +	};
  };
  
  &uart3 {
-@@ -546,6 +605,27 @@
+@@ -546,6 +626,30 @@
  		interrupt-parent = <&gic>;
  		system-power-controller;
  	};
@@ -101,13 +115,17 @@ index 4d55c0c..53e333a 100644
 +		compatible = "wlf,wm1811", "wlf,wm8994";
 +		reg = <0x1a>;
 +
-+		AVDD2-supply = <&reg_codec>;
-+		CPVDD-supply = <&reg_codec>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&codec_pins>;
++
++		AVDD2-supply = <&reg_vbatt>;
++		CPVDD-supply = <&reg_vbatt>;
 +		DBVDD-supply = <&ldo5>;
-+		SPKVDD1-supply = <&reg_codec>;
-+		SPKVDD2-supply = <&reg_codec>;
++		SPKVDD1-supply = <&reg_vbatt>;
++		SPKVDD2-supply = <&reg_vbatt>;
 +
 +		wlf,ldo1ena = <&gpio2 13 GPIO_ACTIVE_HIGH>;
++		wlf,ldoena-always-driven;
 +		#sound-dai-cells = <1>;
 +	};
 +};

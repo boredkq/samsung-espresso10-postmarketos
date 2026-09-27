@@ -83,45 +83,158 @@ ui_print "==========================================="
 
 set_progress 0.2
 
-# Поиск и монтирование корневой файловой системы postmarketOS
-TARGET_DIR=""
-MOUNT_POINT="/tmp/pmos_root"
+# Функция надежного монтирования rootfs postmarketOS (включая вложенные разделы MBR)
+find_and_mount_rootfs() {
+    M_DIR="/tmp/pmos_root"
+    mkdir -p "$M_DIR"
 
-# 1. Проверяем уже смонтированные разделы в TWRP
-if [ -d "/data/usr/lib" ] || [ -d "/data/lib" ]; then
-    TARGET_DIR="/data"
-elif [ -d "/system/usr/lib" ] || [ -d "/system/lib" ]; then
-    TARGET_DIR="/system"
-fi
+    # 1. Проверяем уже смонтированные разделы в TWRP
+    if [ -d "/data/etc" ] && [ -d "/data/usr" ]; then
+        echo "/data"
+        return 0
+    fi
+    if [ -d "/system/etc" ] && [ -d "/system/usr" ]; then
+        echo "/system"
+        return 0
+    fi
 
-# 2. Если не смонтированы, монтируем DATAFS или SYSTEM
-if [ -z "$TARGET_DIR" ]; then
-    mkdir -p "$MOUNT_POINT"
-    for r in \
-        /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS \
-        /dev/block/platform/omap/omap_hsmmc.1/by-name/data \
-        /dev/block/platform/omap/omap_hsmmc.1/by-name/SYSTEM \
-        /dev/block/platform/omap/omap_hsmmc.1/by-name/system \
-        /dev/block/by-name/DATAFS \
-        /dev/block/by-name/data \
-        /dev/block/by-name/SYSTEM \
-        /dev/block/by-name/system \
-        /dev/block/mmcblk0p10 \
-        /dev/block/mmcblk0p9; do
-        if [ -b "$r" ]; then
-            mount "$r" "$MOUNT_POINT" 2>/dev/null || mount -t ext4 "$r" "$MOUNT_POINT" 2>/dev/null
-            if [ -d "$MOUNT_POINT/usr" ] || [ -d "$MOUNT_POINT/etc" ]; then
-                TARGET_DIR="$MOUNT_POINT"
-                break
-            else
-                umount "$MOUNT_POINT" 2>/dev/null || true
+    # 2. Проверяем существующие узлы device-mapper и субразделов
+    for dev in \
+        /dev/mapper/*p2 \
+        /dev/mapper/pmOS_root \
+        /dev/mapper/*root* \
+        /dev/block/mmcblk0p10p2 \
+        /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS*p2 \
+        /dev/loop*p2; do
+        if [ -b "$dev" ]; then
+            if mount -t ext4 -o rw "$dev" "$M_DIR" 2>/dev/null || mount "$dev" "$M_DIR" 2>/dev/null; then
+                if [ -d "$M_DIR/etc" ] || [ -d "$M_DIR/usr" ]; then
+                    echo "$M_DIR"
+                    return 0
+                fi
+                umount "$M_DIR" 2>/dev/null || true
             fi
         fi
     done
-fi
 
-if [ -z "$TARGET_DIR" ]; then
+    # 3. Поиск по метке файловой системы pmOS_root
+    dev_by_label=$(findfs LABEL="pmOS_root" 2>/dev/null || findfs LABEL=pmOS_root 2>/dev/null || true)
+    if [ -z "$dev_by_label" ]; then
+        dev_by_label=$(blkid 2>/dev/null | grep 'LABEL="pmOS_root"' | cut -d: -f1 | head -n 1 || true)
+    fi
+    if [ -n "$dev_by_label" ] && [ -b "$dev_by_label" ]; then
+        if mount -t ext4 -o rw "$dev_by_label" "$M_DIR" 2>/dev/null || mount "$dev_by_label" "$M_DIR" 2>/dev/null; then
+            if [ -d "$M_DIR/etc" ] || [ -d "$M_DIR/usr" ]; then
+                echo "$M_DIR"
+                return 0
+            fi
+            umount "$M_DIR" 2>/dev/null || true
+        fi
+    fi
+
+    # 4. Поиск основного блочного устройства DATA
+    RAW_DATA=""
+    for d in \
+        /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS \
+        /dev/block/platform/omap/omap_hsmmc.1/by-name/data \
+        /dev/block/by-name/DATAFS \
+        /dev/block/by-name/data \
+        /dev/block/mmcblk0p10; do
+        if [ -b "$d" ]; then
+            RAW_DATA="$d"
+            break
+        fi
+    done
+
+    if [ -z "$RAW_DATA" ]; then
+        RAW_DATA=$(find /dev/block -name "DATAFS" 2>/dev/null | head -n 1 || true)
+    fi
+    if [ -z "$RAW_DATA" ]; then
+        RAW_DATA="/dev/block/mmcblk0p10"
+    fi
+
+    if [ -b "$RAW_DATA" ]; then
+        # Инициализация таблицы субразделов ядра через partx/kpartx
+        partx -a "$RAW_DATA" 2>/dev/null || true
+        kpartx -a "$RAW_DATA" 2>/dev/null || true
+
+        for dev in \
+            /dev/mapper/*p2 \
+            /dev/block/mmcblk0p10p2 \
+            "${RAW_DATA}p2"; do
+            if [ -b "$dev" ]; then
+                if mount -t ext4 -o rw "$dev" "$M_DIR" 2>/dev/null || mount "$dev" "$M_DIR" 2>/dev/null; then
+                    if [ -d "$M_DIR/etc" ] || [ -d "$M_DIR/usr" ]; then
+                        echo "$M_DIR"
+                        return 0
+                    fi
+                    umount "$M_DIR" 2>/dev/null || true
+                fi
+            fi
+        done
+
+        # Монтирование через loop device со сканированием разделов
+        LOOP_P=$(losetup -f 2>/dev/null || echo "/dev/loop5")
+        if [ -n "$LOOP_P" ]; then
+            losetup -P "$LOOP_P" "$RAW_DATA" 2>/dev/null || losetup "$LOOP_P" "$RAW_DATA" 2>/dev/null || true
+            partx -a "$LOOP_P" 2>/dev/null || true
+            for cand in "${LOOP_P}p2" "${LOOP_P}2"; do
+                if [ -b "$cand" ]; then
+                    if mount -t ext4 -o rw "$cand" "$M_DIR" 2>/dev/null || mount "$cand" "$M_DIR" 2>/dev/null; then
+                        if [ -d "$M_DIR/etc" ] || [ -d "$M_DIR/usr" ]; then
+                            echo "$M_DIR"
+                            return 0
+                        fi
+                        umount "$M_DIR" 2>/dev/null || true
+                    fi
+                fi
+            done
+        fi
+
+        # Чтение LBA-смещения Partition 2 из MBR таблицы (байт 470, 4 байта little-endian)
+        CALC_OFFSET=""
+        if command -v od >/dev/null 2>&1; then
+            SEC=$(dd if="$RAW_DATA" bs=1 skip=470 count=4 2>/dev/null | od -t u4 -A n 2>/dev/null | tr -d ' ')
+            if [ -n "$SEC" ] && [ "$SEC" -gt 0 ] 2>/dev/null; then
+                CALC_OFFSET=$((SEC * 512))
+            fi
+        fi
+
+        # Перебор точного и стандартных смещений раздела pmOS_root
+        for off in $CALC_OFFSET 268435456 256000000 269484032; do
+            [ -z "$off" ] && continue
+            [ "$off" -le 0 ] && continue
+            LOOP_O=$(losetup -f 2>/dev/null || echo "/dev/loop6")
+            losetup -o "$off" "$LOOP_O" "$RAW_DATA" 2>/dev/null || true
+            if mount -t ext4 -o rw "$LOOP_O" "$M_DIR" 2>/dev/null || mount "$LOOP_O" "$M_DIR" 2>/dev/null; then
+                if [ -d "$M_DIR/etc" ] || [ -d "$M_DIR/usr" ]; then
+                    echo "$M_DIR"
+                    return 0
+                fi
+                umount "$M_DIR" 2>/dev/null || true
+            fi
+            losetup -d "$LOOP_O" 2>/dev/null || true
+        done
+
+        # Прямое монтирование (если раздел не разбит на subpartitions)
+        if mount -t ext4 -o rw "$RAW_DATA" "$M_DIR" 2>/dev/null || mount "$RAW_DATA" "$M_DIR" 2>/dev/null; then
+            if [ -d "$M_DIR/etc" ] || [ -d "$M_DIR/usr" ]; then
+                echo "$M_DIR"
+                return 0
+            fi
+            umount "$M_DIR" 2>/dev/null || true
+        fi
+    fi
+
+    return 1
+}
+
+ui_print "Поиск и монтирование rootfs postmarketOS..."
+TARGET_DIR=$(find_and_mount_rootfs || true)
+
+if [ -z "$TARGET_DIR" ] || [ ! -d "$TARGET_DIR" ]; then
     ui_print "ОШИБКА: Не удалось смонтировать раздел с postmarketOS!"
+    ui_print "Убедитесь, что postmarketOS установлена на планшете."
     exit 1
 fi
 
@@ -149,8 +262,10 @@ if [ -d "$TARGET_DIR/etc/runlevels/default" ] && [ -f "$TARGET_DIR/etc/init.d/sg
     ln -sf /etc/init.d/sgx-ddk-um "$TARGET_DIR/etc/runlevels/default/sgx-ddk-um"
 fi
 
-if [ "$TARGET_DIR" = "$MOUNT_POINT" ]; then
-    umount "$MOUNT_POINT" 2>/dev/null || true
+if [ "$TARGET_DIR" = "/tmp/pmos_root" ]; then
+    sync
+    umount /tmp/pmos_root 2>/dev/null || true
+    losetup -D 2>/dev/null || true
 fi
 
 set_progress 1.0

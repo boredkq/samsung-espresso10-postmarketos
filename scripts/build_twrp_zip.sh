@@ -120,16 +120,42 @@ if [ -n "$ZIP_FILE" ] && [ -e "$ZIP_FILE" ]; then
     echo " Размер: $(du -h "$FINAL_ZIP" | cut -f1)"
 fi
 
-# Сборка отдельного легковесного TWRP ZIP только с ядром и модулями
-if [ -f "$SCRIPT_DIR/scripts/package_kernel_zip.sh" ]; then
-    chmod +x "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
-    "$SCRIPT_DIR/scripts/package_kernel_zip.sh" || true
-fi
-
 # Сборка отдельного TWRP ZIP с 3D аппаратным ускорением PVRports (SGX540)
 if [ -f "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" ]; then
     chmod +x "$SCRIPT_DIR/scripts/package_pvrports_zip.sh"
     "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" || true
+fi
+
+# Встраивание 3D ускорения PVRports непосредственно в основной образ recovery.zip
+if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" ]; then
+    echo "================================================================="
+    echo " Встраивание 3D ускорения PVRports в основной образ ОС..."
+    echo "================================================================="
+    TMP_INJECT="/tmp/pmos_inject_$$"
+    rm -rf "$TMP_INJECT"
+    mkdir -p "$TMP_INJECT/rec" "$TMP_INJECT/pmos" "$TMP_INJECT/rootfs" "$TMP_INJECT/pvr"
+
+    if unzip -q "$FINAL_ZIP" "pmos.zip" -d "$TMP_INJECT/rec" 2>/dev/null && \
+       unzip -q "$TMP_INJECT/rec/pmos.zip" "rootfs.tar.gz" -d "$TMP_INJECT/pmos" 2>/dev/null && \
+       unzip -q "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" "files.tar.gz" -d "$TMP_INJECT/pvr" 2>/dev/null; then
+        tar -xzf "$TMP_INJECT/pmos/rootfs.tar.gz" -C "$TMP_INJECT/rootfs" 2>/dev/null || true
+        tar -xzf "$TMP_INJECT/pvr/files.tar.gz" -C "$TMP_INJECT/rootfs" 2>/dev/null || true
+        mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
+        if [ -f "$TMP_INJECT/rootfs/etc/init.d/sgx-ddk-um" ]; then
+            ln -sf /etc/init.d/sgx-ddk-um "$TMP_INJECT/rootfs/etc/runlevels/default/sgx-ddk-um"
+        fi
+        (cd "$TMP_INJECT/rootfs" && tar -czf "$TMP_INJECT/pmos/rootfs.tar.gz" .)
+        (cd "$TMP_INJECT/pmos" && zip -q -u "$TMP_INJECT/rec/pmos.zip" rootfs.tar.gz)
+        (cd "$TMP_INJECT/rec" && zip -q -u "$FINAL_ZIP" pmos.zip)
+        echo "-> 3D ускорение PVRports успешно интегрировано в $FINAL_ZIP!"
+    fi
+    rm -rf "$TMP_INJECT"
+fi
+
+# Сборка отдельного легковесного TWRP ZIP только с ядром и модулями
+if [ -f "$SCRIPT_DIR/scripts/package_kernel_zip.sh" ]; then
+    chmod +x "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
+    "$SCRIPT_DIR/scripts/package_kernel_zip.sh" || true
 fi
 echo "================================================================="
 echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
