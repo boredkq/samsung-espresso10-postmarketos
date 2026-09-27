@@ -15,6 +15,7 @@
 | Архив | Назначение | Размер | Описание | Ссылка на скачивание |
 | :--- | :--- | :---: | :--- | :--- |
 | **`kernel-samsung-espresso10-twrp.zip`** | **Тестовое ядро (Быстрое обновление)** | **~15 МБ** | Обновляет только ядро Linux 7.1.5 (`boot.img`) и модули (`brcmfmac` и др.) за 5 секунд **без удаления данных пользователя** (Wipe не требуется) | [⬇️ Скачать ядро](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/kernel-samsung-espresso10-twrp.zip) |
+| **`pvrports-samsung-espresso10-twrp.zip`** | **3D ускорение PVRports (SGX540)** | **~7 МБ** | Прошивает в систему проприетарные 3D-библиотеки DDK 1.17, Mesa Classic DRI и службы OpenRC через TWRP без Wipe | [⬇️ Скачать 3D PVRports](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pvrports-samsung-espresso10-twrp.zip) |
 | **`pmos-samsung-espresso10-recovery.zip`** | **Полная ОС postmarketOS** | **~700 МБ** | Полная установка системы с окружением рабочего стола, ядром 7.1.5, разметкой 12.1 ГБ DATAFS | [⬇️ Скачать полную ОС](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10-recovery.zip) |
 
 *Логин по умолчанию:* `user`  

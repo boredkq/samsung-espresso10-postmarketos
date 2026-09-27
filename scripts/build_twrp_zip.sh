@@ -125,6 +125,12 @@ if [ -f "$SCRIPT_DIR/scripts/package_kernel_zip.sh" ]; then
     chmod +x "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
     "$SCRIPT_DIR/scripts/package_kernel_zip.sh" || true
 fi
+
+# Сборка отдельного TWRP ZIP с 3D аппаратным ускорением PVRports (SGX540)
+if [ -f "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" ]; then
+    chmod +x "$SCRIPT_DIR/scripts/package_pvrports_zip.sh"
+    "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" || true
+fi
 echo "================================================================="
 echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
 echo "1. Скопируйте $ZIP_FILE на MicroSD карту или через adb sideload"
