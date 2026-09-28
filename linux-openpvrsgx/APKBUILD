@@ -59,7 +59,7 @@ package() {
 		INSTALL_DTBS_PATH="$pkgdir/usr/share/dtb"
 
 	# A PVR kernel without pvrsrvkm is unusable and must not be published.
-	find "$pkgdir" -type f -name 'pvrsrvkm.ko*' -print -quit | grep -q . || {
+	find "$pkgdir" -type f -name 'pvrsrvkm_omap4_sgx540_120.ko*' -print -quit | grep -q . || {
 		echo "ERROR: pvrsrvkm kernel module was not built" >&2
 		return 1
 	}

@@ -59,12 +59,12 @@ apk add --no-cache \
     mesa-pvr-dri-classic \
     libglvnd
 
-if ! find /usr/lib/modules -type f -name 'pvrsrvkm.ko*' -print -quit 2>/dev/null | grep -q .; then
+if ! find /usr/lib/modules -type f -name 'pvrsrvkm_omap4_sgx540_120.ko*' -print -quit 2>/dev/null | grep -q .; then
     echo "ОШИБКА: модуль ядра pvrsrvkm не найден. Установите образ с ядром linux-openpvrsgx." >&2
     exit 1
 fi
 
-modprobe pvrsrvkm
+modprobe pvrsrvkm_omap4_sgx540_120
 
 # 4. Активация службы инициализации демона SGX (pvrsrvctl) в OpenRC
 echo "[4/4] Настройка службы sgx-ddk-um..."
