@@ -1,7 +1,7 @@
 # PVRports kernel for OMAP4/PowerVR SGX540 devices.
 # Sources are pinned to immutable upstream commits so GitHub Actions can build
 # the kernel without keeping a second full kernel tree in this repository.
-maintainer="PVRports maintainers"
+maintainer="Mighty <mightymb17@gmail.com>"
 pkgname=linux-openpvrsgx
 pkgver=6.1.0
 pkgrel=2
