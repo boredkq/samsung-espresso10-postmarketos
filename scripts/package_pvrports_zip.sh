@@ -43,8 +43,15 @@ for pkg in "${PVR_PACKAGES[@]}"; do
     tar -xzf "$TMP_DOWNLOAD/$pkg" -C "$BUILD_DIR/rootfs"
 done
 
-# Удаляем метаданные пакетов apk из распакованного дерева
-rm -f "$BUILD_DIR/rootfs/.PKGINFO" "$BUILD_DIR/rootfs/.SIGN."*
+# APK control scripts are package-manager metadata, not rootfs payload.  If
+# left at / they can collide with protected files from the postmarketOS
+# rootfs while the PVR payload is injected.
+rm -f \
+    "$BUILD_DIR/rootfs/.PKGINFO" \
+    "$BUILD_DIR/rootfs/.SIGN."* \
+    "$BUILD_DIR/rootfs/.post-"* \
+    "$BUILD_DIR/rootfs/.pre-"* \
+    "$BUILD_DIR/rootfs/.trigger"*
 
 # Создаем конфигурационный маркер
 mkdir -p "$BUILD_DIR/rootfs/etc/pvrports"
