@@ -1,0 +1,82 @@
+# PVRports kernel for OMAP4/PowerVR SGX540 devices.
+# Sources are pinned to immutable upstream commits so GitHub Actions can build
+# the kernel without keeping a second full kernel tree in this repository.
+maintainer="PVRports maintainers"
+pkgname=linux-openpvrsgx
+pkgver=6.1.0
+pkgrel=2
+pkgdesc="Mainline OMAP kernel with the PowerVR SGX pvrsrvkm driver"
+arch="armv7"
+_carch="arm"
+_flavor="openpvrsgx"
+url="https://github.com/tmlind/linux_openpvrsgx"
+license="GPL-2.0-only"
+options="!check !tracedeps pmb:cross-native pmb:kconfigcheck-community"
+makedepends="openssl-dev yaml-dev mpc1-dev mpfr-dev xz findutils bison flex perl sed bash gmp-dev bc linux-headers elfutils-dev"
+
+_kernel_commit="7c72e56fd0a27f87a2f5716a799f6f9d9005c016"
+_pvrports_commit="b7ee11fd954428eec3871870a784dc144ea5c5c4"
+_pvrports_raw="https://gitlab.com/pvrports/pvrports/-/raw/$_pvrports_commit/community/linux-openpvrsgx"
+_config="config-$_flavor.$arch"
+
+source="
+	$pkgname-$_kernel_commit.tar.gz::https://github.com/tmlind/linux_openpvrsgx/archive/$_kernel_commit.tar.gz
+	$_config::$_pvrports_raw/$_config
+	0001-arm-dts-Add-TWL6032-dtsi.patch::$_pvrports_raw/0001-arm-dts-Add-TWL6032-dtsi.patch
+	0002-arm-dts-Add-common-dtsi-for-espresso.patch::$_pvrports_raw/0002-arm-dts-Add-common-dtsi-for-espresso.patch
+	0003-arm-dts-Add-espresso7-support.patch::$_pvrports_raw/0003-arm-dts-Add-espresso7-support.patch
+	0004-arm-dts-Add-espresso10-support.patch::$_pvrports_raw/0004-arm-dts-Add-espresso10-support.patch
+	0005-Add-TWL6030-power-driver-with-minimal-support-for-po.patch::$_pvrports_raw/0005-Add-TWL6030-power-driver-with-minimal-support-for-po.patch
+	0006-Add-TWL6030-power-button-support-to-twl-pwrbutton.patch::$_pvrports_raw/0006-Add-TWL6030-power-button-support-to-twl-pwrbutton.patch
+	0007-mfd-add-STMPE811-ADC-only-driver.patch::$_pvrports_raw/0007-mfd-add-STMPE811-ADC-only-driver.patch
+	0008-Add-clk32kg-to-twl6030.patch::$_pvrports_raw/0008-Add-clk32kg-to-twl6030.patch
+	0009-drivers-power-Add-support-for-smb136-charger.patch::$_pvrports_raw/0009-drivers-power-Add-support-for-smb136-charger.patch
+	0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch::$_pvrports_raw/0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch
+	0011-ata-ahci-fix-enum-constants-for-gcc-13.patch::$_pvrports_raw/0011-ata-ahci-fix-enum-constants-for-gcc-13.patch
+"
+builddir="$srcdir/linux_openpvrsgx-$_kernel_commit"
+provides="linux-postmarketos-omap linux-samsung-espresso3g"
+
+prepare() {
+	default_prepare
+	cp "$srcdir/$_config" .config
+}
+
+build() {
+	unset LDFLAGS
+	make V=1 ARCH="$_carch" CC="${CC:-gcc}" \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1))-postmarketOS"
+}
+
+package() {
+	install -Dm644 "$builddir/arch/$_carch/boot/"*zImage \
+		"$pkgdir/boot/vmlinuz"
+	install -D "$builddir/include/config/kernel.release" \
+		"$pkgdir/usr/share/kernel/$_flavor/kernel.release"
+	make modules_install dtbs_install \
+		ARCH="$_carch" \
+		INSTALL_MOD_PATH="$pkgdir" \
+		INSTALL_DTBS_PATH="$pkgdir/usr/share/dtb"
+
+	# A PVR kernel without pvrsrvkm is unusable and must not be published.
+	find "$pkgdir" -type f -name 'pvrsrvkm.ko*' -print -quit | grep -q . || {
+		echo "ERROR: pvrsrvkm kernel module was not built" >&2
+		return 1
+	}
+}
+
+sha512sums="
+d3d0005ccfe0f7af19482fea53543dc59e1081862d3a6fa624e53fc54cdbedd78f570a5386f1610f223d5a3ec2402107c7acc678ef500dbb47d43b7177ede0ae  linux-openpvrsgx-7c72e56fd0a27f87a2f5716a799f6f9d9005c016.tar.gz
+311fb6e43e59ca7f24e106d45077f4d47c257266db52968e9378c67d52d6254d5c11f7e49db5e5196d1cc769c6e7492a8e3d5d3be8d3d2efa2f3b4bc62e73ab3  config-openpvrsgx.armv7
+f3657e66872059c1c66375504d1dd581ee58126c48dd895a6520474db544263611d9ecc19900fb2e311c86bac8c84610ebd18f8f0b09fab54e64a3ccd622926d  0001-arm-dts-Add-TWL6032-dtsi.patch
+92934fd66a8e9a300164481cdfeb7ce1c351961d017a3ff23ac6dfa0fbe63c14f68a6524cac21abce72f183002fca1ce285edba327e7ff8cceb34c4764527958  0002-arm-dts-Add-common-dtsi-for-espresso.patch
+aa006d419115c2dcb45ad61e2644659249f1f21d54fc1bc82e97f33b3e017e0f343e75141a40285894e48c3f8d7f0cae0dac0c400d92860ce4b4eb0e3573c903  0003-arm-dts-Add-espresso7-support.patch
+e956a466d33373e1cd1d7906d233a12d47b765d7a403ab59395aa70318f74f4b96a13efc3cbeffabd0ccce442d06188348b8830f20653488e7c3a595f10bb712  0004-arm-dts-Add-espresso10-support.patch
+fdbd84d6f98d4896dbfe15b24f3c2823c404c6ff95016a73fd395c0da4141fbeab656a1d7d0c01382f73d071eca428b128a2aaa96f7be8313903a150423f2b9e  0005-Add-TWL6030-power-driver-with-minimal-support-for-po.patch
+4d8fed617dc0b55654905ac3942ab4d2619d1e381a80e54d844961e8034edba6b71b5a9b2b33322533d654bc06c83960f320e3beb980173280cd897e74a17441  0006-Add-TWL6030-power-button-support-to-twl-pwrbutton.patch
+91ba4788d09db8496a6f7b33ff64134e342229c5316fb69be7f5ad8514ebd096293cc2615d50e00e5745f920df79d270ae88ba4b596c789d3a906f312164073d  0007-mfd-add-STMPE811-ADC-only-driver.patch
+f13744ed3636383953e9b68b14bef21c79c2a6b135bace32adbed3c28f079724963c148551bb2cdf6ec846f23b6f63d2a75dd79a0359c81af8cbfc745aef225a  0008-Add-clk32kg-to-twl6030.patch
+812ac68b8eefb320cd2dd7df7bdae09e26aeead15561d7d7a22d3118643a34c1e3a20a2272703923510abd125c412c390fd0f7702bfe803f47c01176709a0a6b  0009-drivers-power-Add-support-for-smb136-charger.patch
+5dea3463f13ebdaf17535a59ee5ffd98ad6d9d3750f6bcafc527699ead6cc4e6a3cf2aa161419c56d4bcec3a51ac2e3427a7883ce26137bec91440239645ec1e  0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch
+ced52d4c09526a31f8eb3df91d961caf076801cbb5bc61568cb4bc25e65447f6a780efc73aab2c2e334fda33e0fd51376787cb8d3c19db44c3733f5091a1c1db  0011-ata-ahci-fix-enum-constants-for-gcc-13.patch
+"

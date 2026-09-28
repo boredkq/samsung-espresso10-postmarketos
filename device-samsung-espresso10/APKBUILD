@@ -3,15 +3,15 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=7
+pkgrel=9
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
 options="!check !archcheck"
 replaces="upower"
 depends="
-	linux-firmware-brcm
-	linux-postmarketos-omap
+	firmware-samsung-espresso
+	linux-openpvrsgx
 	mkbootimg
 	upower
 	alsa-ucm-conf
@@ -24,8 +24,6 @@ source="
 	UPower.conf
 	espresso-env.sh
 	10-omapdrm.conf
-	brcmfmac4330-sdio.txt
-	brcmfmac4330-sdio-samsung-espresso10.txt
 "
 
 build() {
@@ -53,20 +51,13 @@ package() {
 	install -Dm644 "$srcdir"/10-omapdrm.conf \
 		"$pkgdir"/etc/X11/xorg.conf.d/10-omapdrm.conf
 
-	# Broadcom BCM4330 SDIO WiFi NVRAM calibration files
-	install -Dm644 "$srcdir"/brcmfmac4330-sdio.txt \
-		"$pkgdir"/lib/firmware/brcm/brcmfmac4330-sdio.txt
-	install -Dm644 "$srcdir"/brcmfmac4330-sdio-samsung-espresso10.txt \
-		"$pkgdir"/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.txt
 }
 
 sha512sums="
 01810aeb4fe4a0925eed79e50f69c015b5abb4ac6406168686d1bb434eb16e4ef754b145f52d3bc51af7f0e5a17c91e59c6fd5b928ab26fd17e92a3aee6c1f71  deviceinfo
 8dca9a3aa29379716f7b6a84f6347e7fca5955588ffdaf4554cf6f545e1ae6e77be1d0b64423635d5458d034d8292080a2931b70e9fb4b6be3c682e2edf3744e  espresso10-sound.conf
-dd10df05ded750c5521ab961701fab444f1aece53ca0f254e20dcb46c23d18a752fb7259b2039aa0deb1ffcee20bc27d8915a801751217a31c91ba3e6b110cb6  HiFi.conf
+70622237af07939aac49766fc8441bd173aa3bdad846b84b508717ee92ab8859f226b2d5c44dfc9bb8366205acccb0d5430109d9e7e695a76b8b8ce12952dd16  HiFi.conf
 89aac7677c81d785a38674f9a5afb30eaa211dd20c997ad1cd4d7cee7ede93338826617b829536a7473ac29e381f12ff9b146ca97706752b9460fe54b691879d  UPower.conf
-06505a874a2192cdce46197aee12d229cd2ec05c1a5f53c6240d5518cbf019797ca6069f359dd31652beeade3b69c32e904566f4400261e318cc556ba178428e  espresso-env.sh
+6017093080ecbfe6b393e9d1000a7ed805f3da8724ab06d587b1418eb811696664ebfc484b5655827ef4c043ef4246bed95aabaf69c6d4e1708059b98dfd3c6b  espresso-env.sh
 1a7d350ca2df3ada82ce1027ea4e87d749adcc2226d6306e364dd6327683fae6606e0fab3d3e502123a185c043a9d04df9f922fe59acc6abf40276d60c127e6a  10-omapdrm.conf
-d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio.txt
-d05efdf9273e889d536c0578a5b4d307a6dcfd72017d04c2d17193b3f73efbfc00f5daf2549bbc30974b448e00ed8b263e98605e12702dc0baadd7490f92d91b  brcmfmac4330-sdio-samsung-espresso10.txt
 "

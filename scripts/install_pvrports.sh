@@ -57,15 +57,25 @@ apk add --no-cache \
     sgx-ddk-um-ti443x \
     sgx-ddk-um-openrc \
     mesa-pvr-dri-classic \
-    libglvnd || {
-    echo "Предупреждение при установке пакетов через apk. Проверьте подключение к сети."
-}
+    libglvnd
+
+if ! find /usr/lib/modules -type f -name 'pvrsrvkm.ko*' -print -quit 2>/dev/null | grep -q .; then
+    echo "ОШИБКА: модуль ядра pvrsrvkm не найден. Установите образ с ядром linux-openpvrsgx." >&2
+    exit 1
+fi
+
+modprobe pvrsrvkm
 
 # 4. Активация службы инициализации демона SGX (pvrsrvctl) в OpenRC
 echo "[4/4] Настройка службы sgx-ddk-um..."
 if [ -f /etc/init.d/sgx-ddk-um ]; then
-    rc-update add sgx-ddk-um default 2>/dev/null || true
-    /etc/init.d/sgx-ddk-um start 2>/dev/null || true
+    rc-update add sgx-ddk-um default
+    /etc/init.d/sgx-ddk-um start
+fi
+
+if [ ! -e /dev/pvrsrvkm ]; then
+    echo "ОШИБКА: /dev/pvrsrvkm не появился после запуска драйвера." >&2
+    exit 1
 fi
 
 mkdir -p /etc/pvrports

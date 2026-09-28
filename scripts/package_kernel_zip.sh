@@ -17,7 +17,6 @@ echo "================================================================="
 mkdir -p "$OUTPUT_DIR"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/META-INF/com/google/android"
-mkdir -p "$BUILD_DIR/firmware"
 
 # 1. Поиск boot.img
 BOOT_IMG=""
@@ -38,26 +37,61 @@ cp "$BOOT_IMG" "$BUILD_DIR/boot.img"
 echo "-> Добавлен boot.img ($(du -h "$BUILD_DIR/boot.img" | cut -f1))"
 
 # 2. Упаковка модулей ядра (brcmfmac.ko, brcmutil.ko и др.)
-APK_FILE=$(find "$WORK_DIR/packages" -name "linux-postmarketos-omap-*.apk" 2>/dev/null | head -n 1 || true)
+APK_FILE=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
 if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
     echo "-> Извлечение модулей из $APK_FILE..."
     TMP_EXTRACT="/tmp/apk_extract_$$"
     rm -rf "$TMP_EXTRACT"
     mkdir -p "$TMP_EXTRACT"
     tar -xf "$APK_FILE" -C "$TMP_EXTRACT" 2>/dev/null || tar -xzf "$APK_FILE" -C "$TMP_EXTRACT" 2>/dev/null || true
-    if [ -d "$TMP_EXTRACT/lib/modules" ]; then
+    # Alpine installs kernel modules below /usr/lib/modules. /lib is only a
+    # compatibility symlink in the final rootfs and is absent in unpacked APKs.
+    if [ -d "$TMP_EXTRACT/usr/lib/modules" ]; then
+        tar -czf "$BUILD_DIR/modules.tar.gz" -C "$TMP_EXTRACT" usr/lib/modules
+        echo "-> Добавлен modules.tar.gz ($(du -h "$BUILD_DIR/modules.tar.gz" | cut -f1))"
+    elif [ -d "$TMP_EXTRACT/lib/modules" ]; then
+        # Compatibility with packages produced by older Alpine releases.
         tar -czf "$BUILD_DIR/modules.tar.gz" -C "$TMP_EXTRACT" lib/modules
         echo "-> Добавлен modules.tar.gz ($(du -h "$BUILD_DIR/modules.tar.gz" | cut -f1))"
+    else
+        echo "ОШИБКА: каталог модулей не найден в $APK_FILE" >&2
+        rm -rf "$TMP_EXTRACT"
+        exit 1
     fi
     rm -rf "$TMP_EXTRACT"
 fi
 
-# 3. Добавление калибровочных файлов NVRAM WiFi BCM4330
-if [ -f "$SCRIPT_DIR/device-samsung-espresso10/brcmfmac4330-sdio.txt" ]; then
-    cp -f "$SCRIPT_DIR/device-samsung-espresso10/brcmfmac4330-sdio.txt" "$BUILD_DIR/firmware/"
-    cp -f "$SCRIPT_DIR/device-samsung-espresso10/brcmfmac4330-sdio-samsung-espresso10.txt" "$BUILD_DIR/firmware/"
-    echo "-> Добавлены файлы NVRAM WiFi BCM4330"
+# 3. Add the device-specific Samsung BCM4330 firmware and NVRAM.  Do not use
+# linux-firmware's generic BCM4330 blob or a hand-written NVRAM: espresso10
+# needs the vendor calibration shipped by firmware-samsung-espresso.
+FW_APK=$(find "$WORK_DIR/packages" "$WORK_DIR/cache_apk" \
+    -name "firmware-samsung-espresso-*.apk" 2>/dev/null | head -n 1 || true)
+if [ -z "$FW_APK" ] || [ ! -f "$FW_APK" ]; then
+    echo "ОШИБКА: firmware-samsung-espresso APK не найден" >&2
+    exit 1
 fi
+
+FW_EXTRACT="/tmp/firmware_extract_$$"
+FW_STAGE="/tmp/firmware_stage_$$"
+rm -rf "$FW_EXTRACT" "$FW_STAGE"
+mkdir -p "$FW_EXTRACT" "$FW_STAGE/usr/lib/firmware/postmarketos/brcm"
+tar -xf "$FW_APK" -C "$FW_EXTRACT" 2>/dev/null || \
+    tar -xzf "$FW_APK" -C "$FW_EXTRACT" 2>/dev/null
+
+FW_DIR=$(find "$FW_EXTRACT" -type d -path "*/firmware/postmarketos/brcm" \
+    | head -n 1 || true)
+if [ -z "$FW_DIR" ]; then
+    echo "ОШИБКА: firmware-samsung-espresso не содержит каталог brcm" >&2
+    rm -rf "$FW_EXTRACT" "$FW_STAGE"
+    exit 1
+fi
+cp -f "$FW_DIR/brcmfmac4330-sdio.bin" \
+    "$FW_STAGE/usr/lib/firmware/postmarketos/brcm/"
+cp -f "$FW_DIR/brcmfmac4330-sdio.samsung,espresso10.txt" \
+    "$FW_STAGE/usr/lib/firmware/postmarketos/brcm/"
+tar -czf "$BUILD_DIR/firmware.tar.gz" -C "$FW_STAGE" usr/lib/firmware
+rm -rf "$FW_EXTRACT" "$FW_STAGE"
+echo "-> Добавлена оригинальная прошивка и NVRAM WiFi BCM4330"
 
 # 4. Создание update-binary (POSIX shell installer для TWRP)
 cat << 'EOF' > "$BUILD_DIR/META-INF/com/google/android/update-binary"
@@ -290,22 +324,17 @@ if [ -n "$TARGET_DIR" ] && [ -d "$TARGET_DIR" ]; then
     if unzip -l "$ZIPFILE" | grep -q "modules.tar.gz"; then
         ui_print "Распаковка модулей ядра..."
         unzip -o "$ZIPFILE" "modules.tar.gz" -d "$TMPDIR"
-        mkdir -p "$TARGET_DIR/lib/modules"
         tar -xzf "$TMPDIR/modules.tar.gz" -C "$TARGET_DIR"
         sync
         ui_print "Модули ядра успешно установлены!"
     fi
 
-    # Установка калибровочных файлов WiFi NVRAM
-    if unzip -l "$ZIPFILE" | grep -q "firmware/"; then
-        ui_print "Установка NVRAM калибровки WiFi BCM4330..."
-        mkdir -p "$TARGET_DIR/lib/firmware/brcm"
-        unzip -o "$ZIPFILE" "firmware/*" -d "$TMPDIR" 2>/dev/null || true
-        if [ -d "$TMPDIR/firmware" ]; then
-            cp -f "$TMPDIR/firmware/brcmfmac4330-sdio.txt" "$TARGET_DIR/lib/firmware/brcm/" 2>/dev/null || true
-            cp -f "$TMPDIR/firmware/brcmfmac4330-sdio-samsung-espresso10.txt" "$TARGET_DIR/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.txt" 2>/dev/null || true
-            sync
-        fi
+    # Install the matching vendor firmware and board calibration.
+    if unzip -l "$ZIPFILE" | grep -q "firmware.tar.gz"; then
+        ui_print "Установка оригинальной прошивки WiFi BCM4330..."
+        unzip -o "$ZIPFILE" "firmware.tar.gz" -d "$TMPDIR"
+        tar -xzf "$TMPDIR/firmware.tar.gz" -C "$TARGET_DIR"
+        sync
     fi
 
     if [ "$TARGET_DIR" = "/tmp/pmos_root" ]; then

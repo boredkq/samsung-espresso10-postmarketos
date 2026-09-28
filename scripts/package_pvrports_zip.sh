@@ -40,7 +40,7 @@ for pkg in "${PVR_PACKAGES[@]}"; do
         exit 1
     }
     tar -xf "$TMP_DOWNLOAD/$pkg" -C "$BUILD_DIR/rootfs" 2>/dev/null || \
-    tar -xzf "$TMP_DOWNLOAD/$pkg" -C "$BUILD_DIR/rootfs" 2>/dev/null || true
+    tar -xzf "$TMP_DOWNLOAD/$pkg" -C "$BUILD_DIR/rootfs"
 done
 
 # Удаляем метаданные пакетов apk из распакованного дерева

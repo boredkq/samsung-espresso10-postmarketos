@@ -62,7 +62,7 @@ fi
 echo "[1/5] Копирование пропатченных пакетов в pmaports..."
 mkdir -p "$PMAPORTS_DIR/device/community/"
 cp -rf "$SCRIPT_DIR/device-samsung-espresso10" "$PMAPORTS_DIR/device/community/"
-cp -rf "$SCRIPT_DIR/linux-postmarketos-omap" "$PMAPORTS_DIR/device/community/"
+cp -rf "$SCRIPT_DIR/linux-openpvrsgx" "$PMAPORTS_DIR/device/community/"
 
 PMB_FLAGS=""
 if [ "$(id -u)" -eq 0 ]; then
@@ -70,11 +70,11 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 echo "Обновление контрольных сумм пакетов..."
-pmbootstrap $PMB_FLAGS checksum linux-postmarketos-omap
+pmbootstrap $PMB_FLAGS checksum linux-openpvrsgx
 pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 
 echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
-if ! pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-postmarketos-omap; then
+if ! pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-openpvrsgx; then
     echo "================================================================="
     echo "PMBOOTSTRAP LOG (LAST 2000 LINES):"
     echo "================================================================="
@@ -123,7 +123,7 @@ fi
 # Сборка отдельного TWRP ZIP с 3D аппаратным ускорением PVRports (SGX540)
 if [ -f "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" ]; then
     chmod +x "$SCRIPT_DIR/scripts/package_pvrports_zip.sh"
-    "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" || true
+    "$SCRIPT_DIR/scripts/package_pvrports_zip.sh"
 fi
 
 # Встраивание 3D ускорения PVRports непосредственно в основной образ recovery.zip
@@ -133,21 +133,22 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
     echo "================================================================="
     TMP_INJECT="/tmp/pmos_inject_$$"
     rm -rf "$TMP_INJECT"
-    mkdir -p "$TMP_INJECT/rec" "$TMP_INJECT/pmos" "$TMP_INJECT/rootfs" "$TMP_INJECT/pvr"
+    mkdir -p "$TMP_INJECT/pmos" "$TMP_INJECT/rootfs" "$TMP_INJECT/pvr"
 
-    if unzip -q "$FINAL_ZIP" "pmos.zip" -d "$TMP_INJECT/rec" 2>/dev/null && \
-       unzip -q "$TMP_INJECT/rec/pmos.zip" "rootfs.tar.gz" -d "$TMP_INJECT/pmos" 2>/dev/null && \
+    if unzip -q "$FINAL_ZIP" "rootfs.tar.gz" -d "$TMP_INJECT/pmos" 2>/dev/null && \
        unzip -q "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" "files.tar.gz" -d "$TMP_INJECT/pvr" 2>/dev/null; then
-        tar -xzf "$TMP_INJECT/pmos/rootfs.tar.gz" -C "$TMP_INJECT/rootfs" 2>/dev/null || true
-        tar -xzf "$TMP_INJECT/pvr/files.tar.gz" -C "$TMP_INJECT/rootfs" 2>/dev/null || true
+        tar -xzf "$TMP_INJECT/pmos/rootfs.tar.gz" -C "$TMP_INJECT/rootfs"
+        tar -xzf "$TMP_INJECT/pvr/files.tar.gz" -C "$TMP_INJECT/rootfs"
         mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
         if [ -f "$TMP_INJECT/rootfs/etc/init.d/sgx-ddk-um" ]; then
             ln -sf /etc/init.d/sgx-ddk-um "$TMP_INJECT/rootfs/etc/runlevels/default/sgx-ddk-um"
         fi
         (cd "$TMP_INJECT/rootfs" && tar -czf "$TMP_INJECT/pmos/rootfs.tar.gz" .)
-        (cd "$TMP_INJECT/pmos" && zip -q -u "$TMP_INJECT/rec/pmos.zip" rootfs.tar.gz)
-        (cd "$TMP_INJECT/rec" && zip -q -u "$FINAL_ZIP" pmos.zip)
+        (cd "$TMP_INJECT/pmos" && zip -q -u "$FINAL_ZIP" rootfs.tar.gz)
         echo "-> 3D ускорение PVRports успешно интегрировано в $FINAL_ZIP!"
+    else
+        echo "ERROR: unable to inject PVRports userspace into $FINAL_ZIP" >&2
+        exit 1
     fi
     rm -rf "$TMP_INJECT"
 fi
@@ -155,7 +156,7 @@ fi
 # Сборка отдельного легковесного TWRP ZIP только с ядром и модулями
 if [ -f "$SCRIPT_DIR/scripts/package_kernel_zip.sh" ]; then
     chmod +x "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
-    "$SCRIPT_DIR/scripts/package_kernel_zip.sh" || true
+    "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
 fi
 echo "================================================================="
 echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
