@@ -64,7 +64,7 @@ fi
 # 3. Add the device-specific Samsung BCM4330 firmware and NVRAM.  Do not use
 # linux-firmware's generic BCM4330 blob or a hand-written NVRAM: espresso10
 # needs the vendor calibration shipped by firmware-samsung-espresso.
-FW_APK=$(find "$WORK_DIR/packages" "$WORK_DIR/cache_apk" \
+FW_APK=$(find "$WORK_DIR/packages" "$WORK_DIR/cache_apk" "$WORK_DIR/cache_apk_armv7" \
     -name "firmware-samsung-espresso-*.apk" 2>/dev/null | head -n 1 || true)
 if [ -z "$FW_APK" ] || [ ! -f "$FW_APK" ]; then
     echo "ОШИБКА: firmware-samsung-espresso APK не найден" >&2
