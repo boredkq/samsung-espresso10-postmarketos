@@ -4,7 +4,10 @@
 [![Build postmarketOS TWRP ZIP](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build.yml/badge.svg)](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build.yml)
 [![Latest Release](https://img.shields.io/github/v/release/boredkq/samsung-espresso10-postmarketos?label=TWRP%20Release&color=success)](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/tag/latest)
 
-Комплексный набор исправлений, пакетов и CI/CD пайплайнов для сборки и запуска современного дистрибутива **postmarketOS** (Linux Mainline 7.1.5 + LXQt/XFCE4) на планшетах Samsung Galaxy Tab 2 10.1.
+Порт **postmarketOS** для Samsung Galaxy Tab 2 10.1 с облачной сборкой TWRP-архивов. Основной образ использует ядро **Linux 6.1.0 `linux-openpvrsgx`** из PVRports с модулем `pvrsrvkm_omap4_sgx540_120` для PowerVR SGX540 и userspace DDK 1.17.
+
+> [!IMPORTANT]
+> Архивы успешно собираются в GitHub Actions. Работа Wi‑Fi, звука и 3D должна проверяться на реальном планшете; успешная сборка сама по себе не подтверждает работу оборудования.
 
 ---
 
@@ -14,9 +17,12 @@
 
 | Архив | Назначение | Размер | Описание | Ссылка на скачивание |
 | :--- | :--- | :---: | :--- | :--- |
-| **`kernel-samsung-espresso10-twrp.zip`** | **Тестовое ядро (Быстрое обновление)** | **~15 МБ** | Обновляет только ядро Linux 7.1.5 (`boot.img`) и модули (`brcmfmac` и др.) за 5 секунд **без удаления данных пользователя** (Wipe не требуется) | [⬇️ Скачать ядро](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/kernel-samsung-espresso10-twrp.zip) |
-| **`pvrports-samsung-espresso10-twrp.zip`** | **3D ускорение PVRports (SGX540)** | **~7 МБ** | Прошивает в систему проприетарные 3D-библиотеки DDK 1.17, Mesa Classic DRI и службы OpenRC через TWRP без Wipe | [⬇️ Скачать 3D PVRports](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pvrports-samsung-espresso10-twrp.zip) |
-| **`pmos-samsung-espresso10-recovery.zip`** | **Полная ОС postmarketOS** | **~700 МБ** | Полная установка системы с окружением рабочего стола, ядром 7.1.5, разметкой 12.1 ГБ DATAFS | [⬇️ Скачать полную ОС](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10-recovery.zip) |
+| **`pmos-samsung-espresso10-recovery.zip`** | **Полная ОС — рекомендуется** | **~684 МБ** | Полная установка через TWRP: postmarketOS, LXQt, PVRports userspace и PVRports-ядро с SGX540 | [⬇️ Скачать полную ОС](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10-recovery.zip) |
+| **`kernel-samsung-espresso10-twrp.zip`** | **Обновление ядра** | **~15 МБ** | Прошивает `boot.img`, модули `linux-openpvrsgx` и firmware BCM4330. Только для уже установленной postmarketOS, Wipe не требуется | [⬇️ Скачать ядро](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/kernel-samsung-espresso10-twrp.zip) |
+| **`pvrports-samsung-espresso10-twrp.zip`** | **Только PVR userspace** | **~7 МБ** | DDK 1.17, Mesa Classic PVR DRI и OpenRC-служба. Требует уже установленное совместимое ядро `linux-openpvrsgx` | [⬇️ Скачать PVRports](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pvrports-samsung-espresso10-twrp.zip) |
+| **`pmos-samsung-espresso10.zip`** | **Экспорт pmbootstrap** | **~693 МБ** | Дополнительный архив, создаваемый pmbootstrap. Для обычной установки через TWRP используйте файл с суффиксом `-recovery.zip` | [⬇️ Скачать экспорт](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10.zip) |
+
+Последняя проверенная облачная сборка: [GitHub Actions #47](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/runs/36443257504) — **успешно**.
 
 *Логин по умолчанию:* `user`  
 *Пароль по умолчанию:* `147147`
@@ -27,12 +33,12 @@
 
 | Компонент | Исходный статус в upstream | Статус в этом порте | Техническое решение |
 | :--- | :--- | :--- | :--- |
-| **Звук (Audio)** | ❌ Не работал | ✅ **Работает** (Динамики, 3.5мм наушники, микрофон) | Точный ребейз патча DTS: кодек Wolfson WM1811 привязан к `I2C1` + `McBSP3` + LDO `GPIO45`; ядро: драйвер `CONFIG_SND_SOC_WM8994`; профили ALSA UCM2 |
-| **Wi-Fi** | ❌ Не работал / отвал при reboot | ✅ **Работает стабильно** | Драйвер собран модулем (`CONFIG_BRCMFMAC=m`), чтобы udev загружал прошивку после монтирования rootfs; в DTS добавлен `reset-gpios` в `mmc-pwrseq-simple` |
-| **Wi-Fi NVRAM** | ⚠️ Предупреждения о калибровке | ✅ **Калиброван** | Добавлены файлы NVRAM-калибровки (`brcmfmac4330-sdio.txt`) с параметрами антенн espresso10 |
+| **Звук (Audio)** | ❌ Не работал | 🧪 **Требуется проверка на устройстве** | В репозитории есть DTS/ASoC и UCM2-исправления WM1811, но текущий PVRports-образ ещё не подтверждён тестом динамиков, наушников и микрофона |
+| **Wi-Fi** | ❌ Не работал / отвал при reboot | 🧪 **Требуется проверка на устройстве** | `BRCMFMAC` собран модулем; образ включает официальные firmware и NVRAM из `firmware-samsung-espresso` |
+| **Wi-Fi NVRAM** | ⚠️ Предупреждения о калибровке | ✅ **Включён в образ** | Используется `brcmfmac4330-sdio.samsung,espresso10.txt` из пакета `firmware-samsung-espresso`, а не самодельный файл |
 | **Память / Rootfs** | ⚠️ Тесный `FACTORYFS` (1.4 ГБ) | ✅ **12.1 ГБ** (`DATAFS`) | `deviceinfo_flash_heimdall_partition_rootfs="DATAFS"` — система устанавливается в основной раздел |
 | **Батарея / Bootloop** | ❌ Бутлуп при разряде в 0% | ✅ **Защищен от бутлупа** | Профиль `UPower.conf` с порогом экстренного выключения на 6–8% емкости батареи SMB347 |
-| **Графика / 3D** | ⚠️ Нет открытого 3D драйвера в Mesa | ✅ **Плавный 2D / Pixman + PVRports 3D** | Нативно: Pixman 2D (ARM NEON) + софтверный Mesa; для 3D: скрипт `scripts/install_pvrports.sh` подключает репозиторий [PVRports](https://gitlab.com/pvrports/pvrports) (SGX540 DDK) |
+| **Графика / 3D** | ⚠️ Нет открытого драйвера SGX540 в современной Mesa | 🧪 **PVRports встроен, нужен тест** | Ядро `linux-openpvrsgx`, модуль `pvrsrvkm_omap4_sgx540_120`, DDK 1.17 и `mesa-pvr-dri-classic`; профиль выбирает `MESA_LOADER_DRIVER_OVERRIDE=pvr` только при наличии kernel-модуля и userspace |
 | **Сенсорный экран** | ✅ Работает | ✅ **Работает** | Драйвер Atmel maXTouch (мультитач до 10 касаний) |
 | **USB OTG / Зарядка**| ✅ Работает | ✅ **Работает** | Samsung P30 extcon драйвер (OTG-хост и зарядка) |
 
@@ -40,9 +46,9 @@
 
 ## 📲 Инструкция по установке через TWRP Recovery
 
-### Вариант 1: Быстрое обновление только ядра для теста (Без потери данных)
+### Вариант 1: Обновление PVRports-ядра без потери данных
 
-Если у вас уже установлена postmarketOS и вы хотите протестировать работу исправленного звука и Wi-Fi:
+Если у вас уже установлена postmarketOS из этого проекта и нужно обновить только ядро, модули и firmware:
 
 1. Скачайте **`kernel-samsung-espresso10-twrp.zip`** (~15 МБ).
 2. Скопируйте его на карту MicroSD (или используйте ADB Sideload).
@@ -89,14 +95,15 @@
 │   ├── APKBUILD                        # Сборка пакета с автонастройкой звука, графики и питания
 │   ├── deviceinfo                      # Описание платформы, переключение rootfs на DATAFS
 │   ├── 10-omapdrm.conf                 # Конфигурация Xorg modesetting / omapdrm
-│   ├── brcmfmac4330-sdio.txt           # NVRAM калибровка чипа Wi-Fi BCM4330
-│   ├── brcmfmac4330-sdio-samsung-espresso10.txt
 │   ├── espresso-env.sh                 # Оптимизации рендеринга для PowerVR SGX540
 │   ├── espresso10-sound.conf           # Конфигурация ALSA UCM2
 │   ├── HiFi.conf                       # UCM2 HiFi профиль переключения динамиков/наушников
 │   └── UPower.conf                     # Предотвращение глубокого разряда в 0%
 │
-├── linux-postmarketos-omap/            # Ядро Linux OMAP 7.1.5 (Mainline)
+├── linux-openpvrsgx/                    # Активное ядро Linux 6.1.0 с PVR/SGX540
+│   └── APKBUILD                        # Закреплённые исходники и патчи PVRports; проверяет наличие pvrsrvkm
+│
+├── linux-postmarketos-omap/            # Экспериментальное mainline-ядро 7.1.5 без SGX540
 │   ├── APKBUILD                        # Рецепт сборки ядра со всеми патчами
 │   ├── config-postmarketos-omap.armv7  # Конфигурация ядра: BRCMFMAC=m, WM8994, OTG, P30
 │   ├── 0001-iio-rescale-revert-logic.patch
@@ -115,8 +122,10 @@
 │   └── 0014-regulator-twl6030-add-clk32kg-support.patch        # Тактирование 32кГц TWL6030
 │
 └── scripts/
-    ├── build_twrp_zip.sh               # Скрипт сборки системы и вызова генератора ядра
-    └── package_kernel_zip.sh           # Скрипт упаковщика автономного kernel-twrp.zip
+    ├── build_twrp_zip.sh               # Облачная сборка системы и интеграция PVRports
+    ├── package_kernel_zip.sh           # Упаковка автономного kernel-twrp.zip
+    ├── package_pvrports_zip.sh         # Упаковка PVR userspace для TWRP
+    └── install_pvrports.sh             # Проверяемая установка PVR userspace в работающей системе
 ```
 
 ---
@@ -154,16 +163,18 @@ df -h /
 # Должно отображаться ~11-12 ГБ свободного пространства на разделе DATAFS
 ```
 
-### 4. Включение 3D аппаратного ускорения PVRports (PowerVR SGX540)
-Для установки проприетарных библиотек DDK 1.17 и классического DRI-драйвера Mesa из репозитория [PVRports](https://gitlab.com/pvrports/pvrports):
-```bash
-# Подключитесь к Wi-Fi и запустите скрипт установки:
-chmod +x scripts/install_pvrports.sh
-sudo ./scripts/install_pvrports.sh
+### 4. Проверка 3D PVRports (PowerVR SGX540)
 
-# Перезагрузите планшет:
-sudo reboot
+В полном `pmos-samsung-espresso10-recovery.zip` PVRports уже встроен — повторно запускать установочный скрипт не нужно. После загрузки проверьте модуль, устройство и выбранный DRI-драйвер:
+
+```bash
+find /usr/lib/modules -name 'pvrsrvkm_omap4_sgx540_120.ko*'
+ls -l /dev/pvrsrvkm
+echo "$MESA_LOADER_DRIVER_OVERRIDE"
+glxinfo -B
 ```
+
+Ожидается модуль `pvrsrvkm_omap4_sgx540_120`, устройство `/dev/pvrsrvkm` и драйвер Mesa `pvr`. Если установлен старый образ, можно отдельно прошить `kernel-samsung-espresso10-twrp.zip`, а затем `pvrports-samsung-espresso10-twrp.zip` без Wipe.
 
 ---
 
