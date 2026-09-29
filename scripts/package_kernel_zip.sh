@@ -75,6 +75,7 @@ FW_EXTRACT="/tmp/firmware_extract_$$"
 FW_STAGE="/tmp/firmware_stage_$$"
 rm -rf "$FW_EXTRACT" "$FW_STAGE"
 mkdir -p "$FW_EXTRACT" "$FW_STAGE/usr/lib/firmware/postmarketos/brcm"
+mkdir -p "$FW_STAGE/usr/lib/firmware/brcm"
 tar -xf "$FW_APK" -C "$FW_EXTRACT" 2>/dev/null || \
     tar -xzf "$FW_APK" -C "$FW_EXTRACT" 2>/dev/null
 
@@ -89,6 +90,12 @@ cp -f "$FW_DIR/brcmfmac4330-sdio.bin" \
     "$FW_STAGE/usr/lib/firmware/postmarketos/brcm/"
 cp -f "$FW_DIR/brcmfmac4330-sdio.samsung,espresso10.txt" \
     "$FW_STAGE/usr/lib/firmware/postmarketos/brcm/"
+ln -s ../postmarketos/brcm/brcmfmac4330-sdio.bin \
+    "$FW_STAGE/usr/lib/firmware/brcm/brcmfmac4330-sdio.bin"
+ln -s ../postmarketos/brcm/brcmfmac4330-sdio.bin \
+    "$FW_STAGE/usr/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.bin"
+ln -s ../postmarketos/brcm/brcmfmac4330-sdio.samsung,espresso10.txt \
+    "$FW_STAGE/usr/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.txt"
 tar -czf "$BUILD_DIR/firmware.tar.gz" -C "$FW_STAGE" usr/lib/firmware
 rm -rf "$FW_EXTRACT" "$FW_STAGE"
 echo "-> Добавлена оригинальная прошивка и NVRAM WiFi BCM4330"

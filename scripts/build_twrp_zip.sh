@@ -7,7 +7,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_PARTITION="${1:-data}"               # По умолчанию: data (12.1 ГБ DATAFS), также: external_sd
-UI="${2:-lxqt}"                            # Рекомендуется lxqt (легковесный 2D без артефактов XFCE)
+UI="${2:-weston}"
+# The SGX540 PVRports stack supports Wayland, not an Xorg LXQt/XFCE/MATE
+# session.  Keep accepting the historical CI input, but build a usable
+# Weston image instead of booting back to the console after LightDM starts.
+case "$UI" in
+    lxqt|xfce4|mate)
+        echo "UI '$UI' uses Xorg and is unsupported by PVRports; using Weston."
+        UI="weston"
+        ;;
+esac
 USER_NAME="${PMOS_USER:-user}"              # Имя пользователя по умолчанию
 USER_PASSWORD="${PMOS_PASSWORD:-147147}"    # Пароль по умолчанию для входа
 

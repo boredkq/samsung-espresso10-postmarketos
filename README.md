@@ -4,7 +4,7 @@
 [![Build postmarketOS TWRP ZIP](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build.yml/badge.svg)](https://github.com/boredkq/samsung-espresso10-postmarketos/actions/workflows/build.yml)
 [![Latest Release](https://img.shields.io/github/v/release/boredkq/samsung-espresso10-postmarketos?label=TWRP%20Release&color=success)](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/tag/latest)
 
-Порт **postmarketOS** для Samsung Galaxy Tab 2 10.1 с облачной сборкой TWRP-архивов. Основной образ использует ядро **Linux 6.1.0 `linux-openpvrsgx`** из PVRports с модулем `pvrsrvkm_omap4_sgx540_120` для PowerVR SGX540 и userspace DDK 1.17.
+Порт **postmarketOS** для Samsung Galaxy Tab 2 10.1 с облачной сборкой TWRP-архивов. Основной образ использует лёгкую Wayland-сессию **Weston**, ядро **Linux 6.1.0 `linux-openpvrsgx`** из PVRports с модулем `pvrsrvkm_omap4_sgx540_120` для PowerVR SGX540 и userspace DDK 1.17.
 
 > [!IMPORTANT]
 > Архивы успешно собираются в GitHub Actions. Работа Wi‑Fi, звука и 3D должна проверяться на реальном планшете; успешная сборка сама по себе не подтверждает работу оборудования.
@@ -17,7 +17,7 @@
 
 | Архив | Назначение | Размер | Описание | Ссылка на скачивание |
 | :--- | :--- | :---: | :--- | :--- |
-| **`pmos-samsung-espresso10-recovery.zip`** | **Полная ОС — рекомендуется** | **~684 МБ** | Полная установка через TWRP: postmarketOS, LXQt, PVRports userspace и PVRports-ядро с SGX540 | [⬇️ Скачать полную ОС](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10-recovery.zip) |
+| **`pmos-samsung-espresso10-recovery.zip`** | **Полная ОС — рекомендуется** | **~684 МБ** | Полная установка через TWRP: postmarketOS, Weston, PVRports userspace и PVRports-ядро с SGX540 | [⬇️ Скачать полную ОС](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10-recovery.zip) |
 | **`kernel-samsung-espresso10-twrp.zip`** | **Обновление ядра** | **~15 МБ** | Прошивает `boot.img`, модули `linux-openpvrsgx` и firmware BCM4330. Только для уже установленной postmarketOS, Wipe не требуется | [⬇️ Скачать ядро](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/kernel-samsung-espresso10-twrp.zip) |
 | **`pvrports-samsung-espresso10-twrp.zip`** | **Только PVR userspace** | **~7 МБ** | DDK 1.17, Mesa Classic PVR DRI и OpenRC-служба. Требует уже установленное совместимое ядро `linux-openpvrsgx` | [⬇️ Скачать PVRports](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pvrports-samsung-espresso10-twrp.zip) |
 | **`pmos-samsung-espresso10.zip`** | **Экспорт pmbootstrap** | **~693 МБ** | Дополнительный архив, создаваемый pmbootstrap. Для обычной установки через TWRP используйте файл с суффиксом `-recovery.zip` | [⬇️ Скачать экспорт](https://github.com/boredkq/samsung-espresso10-postmarketos/releases/download/latest/pmos-samsung-espresso10.zip) |
@@ -38,7 +38,7 @@
 | **Wi-Fi NVRAM** | ⚠️ Предупреждения о калибровке | ✅ **Включён в образ** | Используется `brcmfmac4330-sdio.samsung,espresso10.txt` из пакета `firmware-samsung-espresso`, а не самодельный файл |
 | **Память / Rootfs** | ⚠️ Тесный `FACTORYFS` (1.4 ГБ) | ✅ **12.1 ГБ** (`DATAFS`) | `deviceinfo_flash_heimdall_partition_rootfs="DATAFS"` — система устанавливается в основной раздел |
 | **Батарея / Bootloop** | ❌ Бутлуп при разряде в 0% | ✅ **Защищен от бутлупа** | Профиль `UPower.conf` с порогом экстренного выключения на 6–8% емкости батареи SMB347 |
-| **Графика / 3D** | ⚠️ Нет открытого драйвера SGX540 в современной Mesa | 🧪 **PVRports встроен, нужен тест** | Ядро `linux-openpvrsgx`, модуль `pvrsrvkm_omap4_sgx540_120`, DDK 1.17 и `mesa-pvr-dri-classic`; профиль выбирает `MESA_LOADER_DRIVER_OVERRIDE=pvr` только при наличии kernel-модуля и userspace |
+| **Графика / 3D** | ⚠️ Нет открытого драйвера SGX540 в современной Mesa | 🧪 **Kernel/UM DDK совпадают** | На устройстве подтверждено `UM DDK`/`KM DDK match [OK]`; новый образ использует Weston, потому что PVRports SGX540 рассчитан на Wayland, а LXQt/LightDM через Xorg возвращался в консоль |
 | **Сенсорный экран** | ✅ Работает | ✅ **Работает** | Драйвер Atmel maXTouch (мультитач до 10 касаний) |
 | **USB OTG / Зарядка**| ✅ Работает | ✅ **Работает** | Samsung P30 extcon драйвер (OTG-хост и зарядка) |
 

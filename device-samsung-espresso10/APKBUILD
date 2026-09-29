@@ -3,7 +3,7 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=9
+pkgrel=10
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
@@ -46,10 +46,23 @@ package() {
 	# 2D/Software GL rendering optimizations
 	install -Dm755 "$srcdir"/espresso-env.sh \
 		"$pkgdir"/etc/profile.d/espresso.sh
+	install -Dm755 "$srcdir"/espresso-env.sh \
+		"$pkgdir"/etc/tinydm.d/env-wayland.d/20-espresso-pvr.sh
 
 	# Force 24-bit TrueColor depth in X11 to eliminate green tint & artifacts on OMAP4430
 	install -Dm644 "$srcdir"/10-omapdrm.conf \
 		"$pkgdir"/etc/X11/xorg.conf.d/10-omapdrm.conf
+
+	# firmware-samsung-espresso keeps redistributable blobs in the
+	# postmarketos namespace.  brcmfmac's default lookup uses firmware/brcm,
+	# so provide the board-specific names expected by the driver.
+	mkdir -p "$pkgdir"/usr/lib/firmware/brcm
+	ln -s ../postmarketos/brcm/brcmfmac4330-sdio.bin \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4330-sdio.bin
+	ln -s ../postmarketos/brcm/brcmfmac4330-sdio.bin \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.bin
+	ln -s ../postmarketos/brcm/brcmfmac4330-sdio.samsung,espresso10.txt \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4330-sdio.samsung,espresso10.txt
 
 }
 
