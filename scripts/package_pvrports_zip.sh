@@ -44,6 +44,18 @@ for pkg in "${PVR_PACKAGES[@]}"; do
     tar -xzf "$TMP_DOWNLOAD/$pkg" -C "$BUILD_DIR/rootfs"
 done
 
+# The device profile used to force EGL_PLATFORM=wayland.  tinydm sources its
+# snippets in lexical order, so undo that setting in the official PVRports
+# snippet before Weston starts: the compositor itself needs DRM/GBM EGL.
+PVR_TINYDM_ENV="$BUILD_DIR/rootfs/etc/tinydm.d/env-wayland.d/pvr-wayland.sh"
+if [ -f "$PVR_TINYDM_ENV" ]; then
+    cat << 'EOF' >> "$PVR_TINYDM_ENV"
+
+# Weston is the Wayland server and must select its DRM/GBM EGL platform.
+unset EGL_PLATFORM
+EOF
+fi
+
 # APK control scripts are package-manager metadata, not rootfs payload.  If
 # left at / they can collide with protected files from the postmarketOS
 # rootfs while the PVR payload is injected.
