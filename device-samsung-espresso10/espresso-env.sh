@@ -7,7 +7,10 @@ if { [ -e /dev/pvrsrvkm ] || find /usr/lib/modules -type f -name 'pvrsrvkm_omap4
     # PVRports PowerVR SGX540 3D Hardware Acceleration Enabled
     unset LIBGL_ALWAYS_SOFTWARE
     export MESA_LOADER_DRIVER_OVERRIDE=pvr
-    export EGL_PLATFORM=wayland
+    # Do not force EGL_PLATFORM here.  This file is also sourced by tinydm
+    # before it starts the compositor.  Weston must create an EGL display on
+    # DRM/GBM; forcing the Wayland client platform makes it exit back to tty1.
+    export __GLX_VENDOR_LIBRARY_NAME=amber
     export PVR_3D_ACCELERATION=1
 else
     # Fallback to 2D-optimized software rasterizer if PVRports is not installed

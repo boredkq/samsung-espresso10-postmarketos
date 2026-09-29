@@ -10,7 +10,7 @@ on:
       ui:
         description: 'Desktop Environment (lxqt, mate, xfce4, weston)'
         required: true
-        default: 'lxqt'
+        default: 'weston'
   push:
     branches:
       - fix_samsung_espresso10_port

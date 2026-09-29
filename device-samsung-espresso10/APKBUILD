@@ -3,7 +3,7 @@ maintainer="Mithil Bavishi <bavishimithil@gmail.com>"
 pkgname=device-samsung-espresso10
 pkgdesc="Samsung Galaxy Tab 2 (10.1 inch)"
 pkgver=8
-pkgrel=10
+pkgrel=11
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
@@ -71,6 +71,6 @@ sha512sums="
 8dca9a3aa29379716f7b6a84f6347e7fca5955588ffdaf4554cf6f545e1ae6e77be1d0b64423635d5458d034d8292080a2931b70e9fb4b6be3c682e2edf3744e  espresso10-sound.conf
 70622237af07939aac49766fc8441bd173aa3bdad846b84b508717ee92ab8859f226b2d5c44dfc9bb8366205acccb0d5430109d9e7e695a76b8b8ce12952dd16  HiFi.conf
 89aac7677c81d785a38674f9a5afb30eaa211dd20c997ad1cd4d7cee7ede93338826617b829536a7473ac29e381f12ff9b146ca97706752b9460fe54b691879d  UPower.conf
-8cc9ed436d60404d0e9b6123f895fbb3204ff283daec655b1c8c8ab803c29589d2d06b29f5cd9a74a079f91e6d16818dcb7cadf840fd0f88466566988b1386e8  espresso-env.sh
+6755181b80e68dbad5640aef91be6e0e6c54c57f4cdeef7da2a32aed399b21d30a6fd5b52078ef22693042a405926a9e1954feb61805994d54d6e93c021039b0  espresso-env.sh
 1a7d350ca2df3ada82ce1027ea4e87d749adcc2226d6306e364dd6327683fae6606e0fab3d3e502123a185c043a9d04df9f922fe59acc6abf40276d60c127e6a  10-omapdrm.conf
 "

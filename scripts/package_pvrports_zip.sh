@@ -29,6 +29,7 @@ PVR_PACKAGES=(
     "sgx-ddk-um-ti443x-1.17.4948957-r1.apk"
     "sgx-ddk-um-openrc-1.17.4948957-r1.apk"
     "mesa-pvr-dri-classic-21.3.9-r1.apk"
+    "mesa-pvr-dri-classic-tinydm-21.3.9-r1.apk"
     "libglvnd-1.6.0-r2.apk"
 )
 
