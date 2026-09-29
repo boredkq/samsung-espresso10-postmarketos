@@ -132,25 +132,41 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
     echo " Встраивание 3D ускорения PVRports в основной образ ОС..."
     echo "================================================================="
     TMP_INJECT="/tmp/pmos_inject_$$"
-    rm -rf "$TMP_INJECT"
+    sudo rm -rf "$TMP_INJECT"
     mkdir -p "$TMP_INJECT/pmos" "$TMP_INJECT/rootfs" "$TMP_INJECT/pvr"
 
     if unzip -q "$FINAL_ZIP" "rootfs.tar.gz" -d "$TMP_INJECT/pmos" 2>/dev/null && \
        unzip -q "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" "files.tar.gz" -d "$TMP_INJECT/pvr" 2>/dev/null; then
-        tar -xzf "$TMP_INJECT/pmos/rootfs.tar.gz" -C "$TMP_INJECT/rootfs"
-        tar -xzf "$TMP_INJECT/pvr/files.tar.gz" -C "$TMP_INJECT/rootfs"
-        mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
+        # Preserve numeric ownership from the original rootfs.  Extracting and
+        # repacking as the GitHub runner changes root-owned paths to UID 1001,
+        # which makes tmpfiles, sshd and wpa_supplicant reject the filesystem.
+        sudo tar --numeric-owner -xzf "$TMP_INJECT/pmos/rootfs.tar.gz" \
+            -C "$TMP_INJECT/rootfs"
+        sudo tar --numeric-owner -xzf "$TMP_INJECT/pvr/files.tar.gz" \
+            -C "$TMP_INJECT/rootfs"
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
         if [ -f "$TMP_INJECT/rootfs/etc/init.d/sgx-ddk-um" ]; then
-            ln -sf /etc/init.d/sgx-ddk-um "$TMP_INJECT/rootfs/etc/runlevels/default/sgx-ddk-um"
+            sudo ln -sf /etc/init.d/sgx-ddk-um \
+                "$TMP_INJECT/rootfs/etc/runlevels/default/sgx-ddk-um"
         fi
-        (cd "$TMP_INJECT/rootfs" && tar -czf "$TMP_INJECT/pmos/rootfs.tar.gz" .)
+
+        for critical_path in . tmp dev run var/empty; do
+            path="$TMP_INJECT/rootfs/$critical_path"
+            if [ -e "$path" ] && [ "$(sudo stat -c '%u' "$path")" != "0" ]; then
+                echo "ERROR: rootfs/$critical_path is not owned by root" >&2
+                exit 1
+            fi
+        done
+
+        (cd "$TMP_INJECT/rootfs" && \
+            sudo tar --numeric-owner -czf "$TMP_INJECT/pmos/rootfs.tar.gz" .)
         (cd "$TMP_INJECT/pmos" && zip -q -u "$FINAL_ZIP" rootfs.tar.gz)
         echo "-> 3D ускорение PVRports успешно интегрировано в $FINAL_ZIP!"
     else
         echo "ERROR: unable to inject PVRports userspace into $FINAL_ZIP" >&2
         exit 1
     fi
-    rm -rf "$TMP_INJECT"
+    sudo rm -rf "$TMP_INJECT"
 fi
 
 # Сборка отдельного легковесного TWRP ZIP только с ядром и модулями

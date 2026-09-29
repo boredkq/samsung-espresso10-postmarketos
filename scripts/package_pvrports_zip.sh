@@ -64,7 +64,10 @@ EOF
 
 # Пакуем файлы системы в files.tar.gz
 echo "-> Создание архива файлов системы files.tar.gz..."
-tar -czf "$BUILD_DIR/files.tar.gz" -C "$BUILD_DIR/rootfs" .
+# APKs are unpacked by the unprivileged CI runner.  Store their payload as
+# root:root explicitly; otherwise the runner UID leaks into the target rootfs.
+tar --numeric-owner --owner=0 --group=0 \
+    -czf "$BUILD_DIR/files.tar.gz" -C "$BUILD_DIR/rootfs" .
 rm -rf "$BUILD_DIR/rootfs" "$TMP_DOWNLOAD"
 
 # Создаем установщик update-binary для TWRP
