@@ -1,0 +1,124 @@
+From: Nikola <nikola@postmarketos.org>
+Subject: [PATCH] ARM: dts: omap4-espresso: add WM1811 audio
+
+Describe the WM1811 codec, its board supplies, the 26 MHz clock-request
+GPIO, McBSP3 pins and the espresso machine-driver node.
+
+---
+ arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi | 83 ++++++++++++++++++++
+ 1 file changed, 83 insertions(+)
+
+diff --git a/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi b/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi
+--- a/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi
++++ b/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi
+@@ -121,7 +121,37 @@
+ 		regulator-always-on;
+ 		enable-active-high;
+ 	};
+ 
++	reg_vbatt: regulator-vbatt {
++		compatible = "regulator-fixed";
++		regulator-name = "vbatt";
++		regulator-min-microvolt = <3700000>;
++		regulator-max-microvolt = <3700000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	reg_codec_clk: regulator-codec-clk {
++		compatible = "regulator-fixed";
++		regulator-name = "codec_clk_req";
++		pinctrl-names = "default";
++		pinctrl-0 = <&codec_clk_pins>;
++		gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>; /* GPIO 101: 26M_EN */
++		startup-delay-us = <10000>;
++		enable-active-high;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	sound {
++		compatible = "samsung,espresso10-audio";
++		samsung,cpu-dai = <&mcbsp3>;
++		samsung,audio-codec = <&wm1811>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&main_mic_bias_pins>;
++		main-mic-bias-gpios = <&gpio2 16 GPIO_ACTIVE_HIGH>;
++	};
++
+ 	gpio-keys {
+ 		compatible = "gpio-keys";
+ 		pinctrl-names = "default";
+@@ -443,6 +473,33 @@
+ 		>;
+ 	};
+ 
++	mcbsp3_pins: pinmux-mcbsp3-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)  /* AP_I2S_DIN */
++			OMAP4_IOPAD(0x106, PIN_OUTPUT | MUX_MODE1) /* AP_I2S_DOUT */
++			OMAP4_IOPAD(0x108, PIN_INPUT | MUX_MODE1)  /* AP_I2S_CLK */
++			OMAP4_IOPAD(0x10a, PIN_INPUT | MUX_MODE1)  /* AP_I2S_SYNC */
++		>;
++	};
++
++	codec_pins: pinmux-codec-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x06a, PIN_OUTPUT | MUX_MODE3) /* GPIO 45: CODEC_LDO_EN */
++		>;
++	};
++
++	codec_clk_pins: pinmux-codec-clk-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x090, PIN_OUTPUT | MUX_MODE3) /* GPIO 101: CODEC_CLK_REQ */
++		>;
++	};
++
++	main_mic_bias_pins: pinmux-main-mic-bias-pins {
++		pinctrl-single,pins = <
++			OMAP4_IOPAD(0x070, PIN_OUTPUT | MUX_MODE3) /* GPIO 48: MICBIAS_EN */
++		>;
++	};
++
+ 	bluetooth_pins: pinmux_bluetooth_pins {
+ 		pinctrl-single,pins = <
+ 			OMAP4_IOPAD(0x094, PIN_OUTPUT | MUX_MODE3)
+@@ -512,10 +569,36 @@
+ 			ti,system-power-controller;
+ 		};
+ 	};
++
++	wm1811: codec@1a {
++		compatible = "wlf,wm1811", "wlf,wm8994";
++		reg = <0x1a>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&codec_pins>;
++
++		AVDD2-supply = <&reg_vbatt>;
++		CPVDD-supply = <&reg_vbatt>;
++		DBVDD1-supply = <&ldo5>;
++		DBVDD2-supply = <&ldo5>;
++		DBVDD3-supply = <&ldo5>;
++		SPKVDD1-supply = <&reg_vbatt>;
++		SPKVDD2-supply = <&reg_vbatt>;
++
++		wlf,ldo1ena = <&gpio2 13 GPIO_ACTIVE_HIGH>;
++		wlf,ldoena-always-driven;
++		#sound-dai-cells = <1>;
++	};
+ };
+ 
+ #include "twl6032.dtsi"
+ 
++&mcbsp3 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&mcbsp3_pins>;
++	#sound-dai-cells = <0>;
++};
++
+ &i2c2 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&i2c2_pins>;
+-- 
+2.45.0

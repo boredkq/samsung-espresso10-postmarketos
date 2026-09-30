@@ -4,7 +4,7 @@
 maintainer="Mighty <mightymb17@gmail.com>"
 pkgname=linux-openpvrsgx
 pkgver=6.1.0
-pkgrel=2
+pkgrel=3
 pkgdesc="Mainline OMAP kernel with the PowerVR SGX pvrsrvkm driver"
 arch="armv7"
 _carch="arm"
@@ -33,6 +33,9 @@ source="
 	0009-drivers-power-Add-support-for-smb136-charger.patch::$_pvrports_raw/0009-drivers-power-Add-support-for-smb136-charger.patch
 	0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch::$_pvrports_raw/0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch
 	0011-ata-ahci-fix-enum-constants-for-gcc-13.patch::$_pvrports_raw/0011-ata-ahci-fix-enum-constants-for-gcc-13.patch
+	0012-arm-dts-espresso-add-wm1811-audio.patch
+	0013-ASoC-ti-add-espresso-machine-driver.patch
+	config-audio.fragment
 "
 builddir="$srcdir/linux_openpvrsgx-$_kernel_commit"
 provides="linux-postmarketos-omap linux-samsung-espresso3g"
@@ -40,6 +43,8 @@ provides="linux-postmarketos-omap linux-samsung-espresso3g"
 prepare() {
 	default_prepare
 	cp "$srcdir/$_config" .config
+	scripts/kconfig/merge_config.sh -m .config "$srcdir/config-audio.fragment"
+	make ARCH="$_carch" olddefconfig
 }
 
 build() {
@@ -63,6 +68,19 @@ package() {
 		echo "ERROR: pvrsrvkm kernel module was not built" >&2
 		return 1
 	}
+
+	# Do not publish an image that only contains userspace audio profiles.
+	# All layers required to expose the WM1811 ALSA card must be present.
+	for module in \
+		'wm8994.ko*' \
+		'wm8994-regulator.ko*' \
+		'snd-soc-wm8994.ko*' \
+		'snd-soc-espresso.ko*'; do
+		find "$pkgdir" -type f -name "$module" -print -quit | grep -q . || {
+			echo "ERROR: required audio module $module was not built" >&2
+			return 1
+		}
+	done
 }
 
 sha512sums="
@@ -79,4 +97,7 @@ f13744ed3636383953e9b68b14bef21c79c2a6b135bace32adbed3c28f079724963c148551bb2cdf
 812ac68b8eefb320cd2dd7df7bdae09e26aeead15561d7d7a22d3118643a34c1e3a20a2272703923510abd125c412c390fd0f7702bfe803f47c01176709a0a6b  0009-drivers-power-Add-support-for-smb136-charger.patch
 5dea3463f13ebdaf17535a59ee5ffd98ad6d9d3750f6bcafc527699ead6cc4e6a3cf2aa161419c56d4bcec3a51ac2e3427a7883ce26137bec91440239645ec1e  0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch
 ced52d4c09526a31f8eb3df91d961caf076801cbb5bc61568cb4bc25e65447f6a780efc73aab2c2e334fda33e0fd51376787cb8d3c19db44c3733f5091a1c1db  0011-ata-ahci-fix-enum-constants-for-gcc-13.patch
+12100542382c36c4dbbd109e6864d8d0bda6dab263ec06945eab59237170346ad13c97a4e160d6fd6f9f81335b3c389a9a5c0322c85b1ae6475bf646d3903e6b  0012-arm-dts-espresso-add-wm1811-audio.patch
+90b6bb19e0a27a3badab23cb408a9209ad3d629dbad9ce84e50625b71526c89e95b7a71a2a00dd04b074263c74df88336db4b7e69ee5d17c26ad3d9c85b87fda  0013-ASoC-ti-add-espresso-machine-driver.patch
+eb3020200f85ff03c025e1841a498220562fa78af757af25333a5e0cba7c3dd1230c8ea7f9494f689292e48a460139c19209ec7b86fc0eda6c8eb8da0494fb6b  config-audio.fragment
 "
