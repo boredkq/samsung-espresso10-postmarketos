@@ -4,7 +4,7 @@
 maintainer="Mighty <mightymb17@gmail.com>"
 pkgname=linux-openpvrsgx
 pkgver=6.1.0
-pkgrel=3
+pkgrel=4
 pkgdesc="Mainline OMAP kernel with the PowerVR SGX pvrsrvkm driver"
 arch="armv7"
 _carch="arm"
@@ -98,6 +98,6 @@ f13744ed3636383953e9b68b14bef21c79c2a6b135bace32adbed3c28f079724963c148551bb2cdf
 5dea3463f13ebdaf17535a59ee5ffd98ad6d9d3750f6bcafc527699ead6cc4e6a3cf2aa161419c56d4bcec3a51ac2e3427a7883ce26137bec91440239645ec1e  0010-Revert-partially-Revert-usb-musb-Set-the-DT-node-on-the-child-device.patch
 ced52d4c09526a31f8eb3df91d961caf076801cbb5bc61568cb4bc25e65447f6a780efc73aab2c2e334fda33e0fd51376787cb8d3c19db44c3733f5091a1c1db  0011-ata-ahci-fix-enum-constants-for-gcc-13.patch
 12100542382c36c4dbbd109e6864d8d0bda6dab263ec06945eab59237170346ad13c97a4e160d6fd6f9f81335b3c389a9a5c0322c85b1ae6475bf646d3903e6b  0012-arm-dts-espresso-add-wm1811-audio.patch
-90b6bb19e0a27a3badab23cb408a9209ad3d629dbad9ce84e50625b71526c89e95b7a71a2a00dd04b074263c74df88336db4b7e69ee5d17c26ad3d9c85b87fda  0013-ASoC-ti-add-espresso-machine-driver.patch
+f2787580036451c5cfa235eeed62c62cbb7a60e8b78ae773ed4ee92b228ae15e3b59feb36b2a4322c104a4a5750ab225986f06bd859ee48935149f2697d6f063  0013-ASoC-ti-add-espresso-machine-driver.patch
 eb3020200f85ff03c025e1841a498220562fa78af757af25333a5e0cba7c3dd1230c8ea7f9494f689292e48a460139c19209ec7b86fc0eda6c8eb8da0494fb6b  config-audio.fragment
 "
