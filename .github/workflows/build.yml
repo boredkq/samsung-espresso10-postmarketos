@@ -78,6 +78,15 @@ jobs:
           chmod +x scripts/build_twrp_zip.sh
           ./scripts/build_twrp_zip.sh "${{ github.event.inputs.partition || 'data' }}" "${{ github.event.inputs.ui || 'lxqt' }}"
 
+      - name: Upload pmbootstrap failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmbootstrap-failure-log
+          path: ~/.local/var/pmbootstrap/log.txt
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Upload TWRP ZIP Artifact
         uses: actions/upload-artifact@v4
         continue-on-error: true

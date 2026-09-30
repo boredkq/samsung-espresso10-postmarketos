@@ -85,9 +85,12 @@ pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
 if ! pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-openpvrsgx; then
     echo "================================================================="
-    echo "PMBOOTSTRAP LOG (LAST 2000 LINES):"
+    echo "PMBOOTSTRAP COMPILER DIAGNOSTICS:"
+    grep -aEin 'error:|fatal error:|undefined reference|No rule to make|Killed signal|Error [0-9]+|ERROR:' \
+        "$WORK_DIR/log.txt" | tail -n 200 || true
+    echo "PMBOOTSTRAP LOG (LAST 300 LINES):"
     echo "================================================================="
-    cat "$WORK_DIR/log.txt" | tail -n 2000 || true
+    tail -n 300 "$WORK_DIR/log.txt" || true
     exit 1
 fi
 
