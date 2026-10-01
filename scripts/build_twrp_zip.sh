@@ -173,6 +173,9 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
         sudo mkdir -p "$TINYDM_SESSION_DIR"
         sudo ln -sfn /usr/share/wayland-sessions/weston.desktop \
             "$TINYDM_SESSION_DIR/default-session.desktop"
+        if [ -f "$WESTON_SESSION" ]; then
+            sudo sed -i 's|^Exec=.*|Exec=dbus-run-session start_weston.sh|g' "$WESTON_SESSION"
+        fi
         echo "Selected tinydm session: /usr/share/wayland-sessions/weston.desktop"
 
         # Provide DRI symlinks so standard DRI lookups resolve PVR driver

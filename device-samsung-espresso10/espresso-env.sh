@@ -23,3 +23,9 @@ else
 fi
 
 export QT_QPA_PLATFORMTHEME=gtk2
+
+if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+    export XDG_RUNTIME_DIR="/tmp/$(id -u)-runtime-dir"
+    mkdir -p "$XDG_RUNTIME_DIR"
+    chmod 0700 "$XDG_RUNTIME_DIR"
+fi
