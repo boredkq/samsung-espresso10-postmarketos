@@ -156,6 +156,25 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
             -C "$TMP_INJECT/rootfs"
         sudo tar --numeric-owner -xzf "$TMP_INJECT/pvr/files.tar.gz" \
             -C "$TMP_INJECT/rootfs"
+
+        # pmbootstrap's Weston UI package can leave tinydm without a selected
+        # session. In that case tinydm starts, exits immediately, and the tablet
+        # remains at the tty login prompt. Select the packaged Weston session
+        # explicitly in the final rootfs (after all APK post-install scripts).
+        WESTON_SESSION="$TMP_INJECT/rootfs/usr/share/wayland-sessions/weston.desktop"
+        TINYDM_SESSION_DIR="$TMP_INJECT/rootfs/var/lib/tinydm"
+        if [ ! -f "$WESTON_SESSION" ]; then
+            echo "ERROR: Weston session desktop file is missing: $WESTON_SESSION" >&2
+            echo "Available Wayland sessions:" >&2
+            sudo find "$TMP_INJECT/rootfs/usr/share/wayland-sessions" \
+                -maxdepth 1 -type f -name '*.desktop' -print 2>/dev/null || true
+            exit 1
+        fi
+        sudo mkdir -p "$TINYDM_SESSION_DIR"
+        sudo ln -sfn /usr/share/wayland-sessions/weston.desktop \
+            "$TINYDM_SESSION_DIR/default-session.desktop"
+        echo "Selected tinydm session: /usr/share/wayland-sessions/weston.desktop"
+
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
         if [ -f "$TMP_INJECT/rootfs/etc/init.d/sgx-ddk-um" ]; then
             sudo ln -sf /etc/init.d/sgx-ddk-um \
