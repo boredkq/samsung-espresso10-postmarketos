@@ -356,7 +356,7 @@ echo "# dummy" > "$BUILD_DIR/META-INF/com/google/android/updater-script"
 
 FINAL_PVR_ZIP="$OUTPUT_DIR/pvrports-samsung-espresso10-twrp.zip"
 rm -f "$FINAL_PVR_ZIP"
-(cd "$BUILD_DIR" && zip -r9 "$FINAL_PVR_ZIP" .)
+(cd "$BUILD_DIR" && zip -0 -rq "$FINAL_PVR_ZIP" .)
 
 echo "================================================================="
 echo " TWRP ZIP 3D УСКОРЕНИЯ УСПЕШНО СОЗДАН!"

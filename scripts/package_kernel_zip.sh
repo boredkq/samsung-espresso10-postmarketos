@@ -225,17 +225,49 @@ find_and_mount_rootfs() {
 
     # 4. Поиск основного блочного устройства DATA
     RAW_DATA=""
-    for d in \
-        /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS \
-        /dev/block/platform/omap/omap_hsmmc.1/by-name/data \
-        /dev/block/by-name/DATAFS \
-        /dev/block/by-name/data \
-        /dev/block/mmcblk0p10; do
-        if [ -b "$d" ]; then
-            RAW_DATA="$d"
-            break
-        fi
-    done
+
+    # Resolve DATAFS like the official postmarketOS recovery installer.
+    if command -v findfs >/dev/null 2>&1; then
+        RAW_DATA=$(findfs PARTLABEL=DATAFS 2>/dev/null || true)
+    fi
+
+    # Older Samsung TWRP builds may expose no by-name symlinks. Read the
+    # backing device from recovery.fstab/twrp.fstab in that case.
+    if [ -z "$RAW_DATA" ]; then
+        for fstab in /etc/recovery.fstab /etc/twrp.fstab; do
+            [ -f "$fstab" ] || continue
+            candidate=$(awk '
+                !/^#/ && ($0 ~ /DATAFS/ || $0 ~ /[[:space:]]\/data([[:space:]]|$)/) {
+                    for (i = 1; i <= NF; i++) {
+                        if ($i ~ /^\/dev\//) { print $i; exit }
+                    }
+                }
+            ' "$fstab" 2>/dev/null)
+            if [ -n "$candidate" ]; then
+                RAW_DATA="$candidate"
+                break
+            fi
+        done
+    fi
+
+    if [ -n "$RAW_DATA" ]; then
+        resolved=$(readlink -f "$RAW_DATA" 2>/dev/null || true)
+        [ -n "$resolved" ] && RAW_DATA="$resolved"
+    fi
+
+    if [ -z "$RAW_DATA" ]; then
+        for d in \
+            /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS \
+            /dev/block/platform/omap/omap_hsmmc.1/by-name/data \
+            /dev/block/by-name/DATAFS \
+            /dev/block/by-name/data \
+            /dev/block/mmcblk0p10; do
+            if [ -b "$d" ]; then
+                RAW_DATA="$d"
+                break
+            fi
+        done
+    fi
 
     if [ -z "$RAW_DATA" ]; then
         RAW_DATA=$(find /dev/block -name "DATAFS" 2>/dev/null | head -n 1 || true)
@@ -291,7 +323,22 @@ find_and_mount_rootfs() {
             fi
         fi
 
-        # Перебор точного и стандартных смещений раздела pmOS_root
+        # pmbootstrap creates pmOS_root at decimal 256 MB. Some old TWRP
+        # builds cannot expose loopXp2 through partx/kpartx, so ask mount to
+        # create a loop device directly at the filesystem offset.
+        for off in 256000000 $CALC_OFFSET 268435456 269484032; do
+            [ -n "$off" ] || continue
+            [ "$off" -gt 0 ] 2>/dev/null || continue
+            if mount -t ext4 -o "rw,loop,offset=$off" "$RAW_DATA" "$M_DIR" 2>/dev/null; then
+                if [ -d "$M_DIR/etc" ] && [ -d "$M_DIR/usr" ]; then
+                    echo "$M_DIR"
+                    return 0
+                fi
+                umount "$M_DIR" 2>/dev/null || true
+            fi
+        done
+
+        # Fallback for recoveries whose losetup supports an explicit offset.
         for off in $CALC_OFFSET 268435456 256000000 269484032; do
             [ -z "$off" ] && continue
             [ "$off" -le 0 ] && continue
@@ -368,7 +415,7 @@ echo "# dummy" > "$BUILD_DIR/META-INF/com/google/android/updater-script"
 # 5. Создание ZIP-архива
 FINAL_KERNEL_ZIP="$OUTPUT_DIR/kernel-samsung-espresso10-twrp.zip"
 rm -f "$FINAL_KERNEL_ZIP"
-(cd "$BUILD_DIR" && zip -r9 "$FINAL_KERNEL_ZIP" .)
+(cd "$BUILD_DIR" && zip -0 -rq "$FINAL_KERNEL_ZIP" .)
 
 echo "================================================================="
 echo " АВТОНОМНЫЙ TWRP ZIP ЯДРА УСПЕШНО СОЗДАН!"

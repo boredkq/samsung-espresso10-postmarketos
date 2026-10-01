@@ -191,7 +191,16 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
 
         (cd "$TMP_INJECT/rootfs" && \
             sudo tar --numeric-owner -czf "$TMP_INJECT/pmos/rootfs.tar.gz" .)
-        (cd "$TMP_INJECT/pmos" && zip -q -u "$FINAL_ZIP" rootfs.tar.gz)
+        (cd "$TMP_INJECT/pmos" && zip -0 -q "$FINAL_ZIP" rootfs.tar.gz)
+        python3 -c "
+import zipfile, sys
+with zipfile.ZipFile('$FINAL_ZIP', 'r') as z:
+    info = z.getinfo('rootfs.tar.gz')
+    if info.compress_type != zipfile.ZIP_STORED:
+        print(f'ERROR: rootfs.tar.gz compress_type is {info.compress_type}, expected STORED (0)', file=sys.stderr)
+        sys.exit(1)
+    print(f'Verified: rootfs.tar.gz is stored uncompressed (ZIP_STORED, {info.file_size} bytes)')
+"
         echo "-> 3D ускорение PVRports успешно интегрировано в $FINAL_ZIP!"
     else
         echo "ERROR: unable to inject PVRports userspace into $FINAL_ZIP" >&2
@@ -205,9 +214,27 @@ if [ -f "$SCRIPT_DIR/scripts/package_kernel_zip.sh" ]; then
     chmod +x "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
     "$SCRIPT_DIR/scripts/package_kernel_zip.sh"
 fi
+
+if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ]; then
+    echo "================================================================="
+    echo " Проверка целостности и методов сжатия архивов..."
+    python3 -c "
+import zipfile, sys
+with zipfile.ZipFile('$FINAL_ZIP', 'r') as z:
+    for item in z.infolist():
+        method_str = 'STORED (no compression)' if item.compress_type == zipfile.ZIP_STORED else f'DEFLATED ({item.compress_type})'
+        print(f'  {item.filename:20s}: {method_str:25s} ({item.file_size} bytes)')
+        if item.filename == 'rootfs.tar.gz' and item.compress_type != zipfile.ZIP_STORED:
+            print(f'ERROR: rootfs.tar.gz compress_type is {item.compress_type}, expected STORED (0)', file=sys.stderr)
+            sys.exit(1)
+print('Все файлы в $FINAL_ZIP проверены успешно!')
+"
+    echo "================================================================="
+fi
+
 echo "================================================================="
 echo "КАК ПРОШИТЬ ЧЕРЕЗ TWRP:"
-echo "1. Скопируйте $ZIP_FILE на MicroSD карту или через adb sideload"
+echo "1. Скопируйте ${FINAL_ZIP:-$ZIP_FILE} на MicroSD карту или через adb sideload"
 echo "2. Загрузите планшет в TWRP (зажмите Power + Volume Down)"
 echo "3. В TWRP:"
 echo "   - Очистка (Wipe): Wipe -> Advanced Wipe -> System, Data, Cache"
