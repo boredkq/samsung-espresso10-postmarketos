@@ -204,12 +204,12 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
 KERNEL=="pvrsrvkm*", MODE="0666", GROUP="video"
 EOF
 
-        # Device-specific Weston configuration (hardware GL with auto pixman fallback)
+        # Device-specific Weston configuration (use-pixman ensures reliable DRM KMS display)
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/weston"
         cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/weston/weston.ini" >/dev/null
 [core]
 backend=drm-backend.so
-renderer=auto
+use-pixman=true
 xwayland=true
 
 [shell]
@@ -217,6 +217,47 @@ background-image=/usr/share/wallpapers/postmarketos.jpg
 panel-position=top
 locking=false
 EOF
+
+        # Ensure robust start_weston.sh wrapper with automatic fallback
+        sudo mkdir -p "$TMP_INJECT/rootfs/usr/bin"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/usr/bin/start_weston.sh" >/dev/null
+#!/bin/sh
+export DISPLAY=:0
+
+# Create XDG_RUNTIME_DIR
+XDG_RUNTIME_DIR=/tmp/$(id -u)-runtime-dir
+export XDG_RUNTIME_DIR
+if ! test -d "${XDG_RUNTIME_DIR}"; then
+    mkdir -p "${XDG_RUNTIME_DIR}"
+    chmod 0700 "${XDG_RUNTIME_DIR}"
+fi
+
+cfg="/etc/xdg/weston/weston.ini"
+[ -e "$cfg" ] || cfg="$cfg.default"
+
+(
+    for _ in $(seq 0 19); do
+        sleep 0.5
+        postmarketos-demos && break
+    done
+) &
+
+# Launch weston. If it exits with error, retry directly with --use-pixman
+if ! weston --config="$cfg" 2>&1 | logger -t "$(whoami):weston"; then
+    logger -t "$(whoami):weston" "Weston failed to start; retrying with --use-pixman..."
+    exec weston --config="$cfg" --use-pixman 2>&1 | logger -t "$(whoami):weston"
+fi
+EOF
+        sudo chmod 0755 "$TMP_INJECT/rootfs/usr/bin/start_weston.sh"
+
+        # Ensure ALSA UCM2 symlinks for truncated driver name (espresso10-soun)
+        sudo mkdir -p "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d"
+        sudo ln -sfn espresso10-sound "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d/espresso10-soun"
+        if [ -d "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d/espresso10-sound" ]; then
+            sudo ln -sfn espresso10-sound.conf "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d/espresso10-sound/espresso10-soun.conf"
+        fi
+        sudo mkdir -p "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/omap"
+        sudo ln -sfn espresso10-sound "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/omap/espresso10-soun"
 
         # Ensure tinydm environment does not leak LIBGL_ALWAYS_SOFTWARE or invalid EGL_PLATFORM
         PVR_TINYDM_ENV="$TMP_INJECT/rootfs/etc/tinydm.d/env-wayland.d/pvr-wayland.sh"
