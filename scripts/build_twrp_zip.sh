@@ -175,6 +175,60 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
             "$TINYDM_SESSION_DIR/default-session.desktop"
         echo "Selected tinydm session: /usr/share/wayland-sessions/weston.desktop"
 
+        # Provide DRI symlinks so standard DRI lookups resolve PVR driver
+        sudo mkdir -p "$TMP_INJECT/rootfs/usr/lib/dri"
+        if [ -f "$TMP_INJECT/rootfs/usr/lib/xorg/modules/dri/pvr_dri.so" ]; then
+            sudo ln -sfn ../xorg/modules/dri/pvr_dri.so "$TMP_INJECT/rootfs/usr/lib/dri/pvr_dri.so"
+        fi
+        if [ -f "$TMP_INJECT/rootfs/usr/lib/xorg/modules/dri/swrast_dri.so" ]; then
+            sudo ln -sfn ../xorg/modules/dri/swrast_dri.so "$TMP_INJECT/rootfs/usr/lib/dri/swrast_dri.so"
+        fi
+
+        # Ensure kernel module pvrsrvkm auto-loads on boot for SGX540
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/modules-load.d"
+        echo "pvrsrvkm_omap4_sgx540_120" | sudo tee "$TMP_INJECT/rootfs/etc/modules-load.d/pvrsrvkm.conf" >/dev/null
+        if [ -f "$TMP_INJECT/rootfs/etc/modules" ]; then
+            if ! grep -q "pvrsrvkm_omap4_sgx540_120" "$TMP_INJECT/rootfs/etc/modules"; then
+                echo "pvrsrvkm_omap4_sgx540_120" | sudo tee -a "$TMP_INJECT/rootfs/etc/modules" >/dev/null
+            fi
+        else
+            echo "pvrsrvkm_omap4_sgx540_120" | sudo tee "$TMP_INJECT/rootfs/etc/modules" >/dev/null
+        fi
+
+        # Udev permissions for PowerVR SGX GPU device node (allow non-root user session)
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/udev/rules.d"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/udev/rules.d/99-pvrsrvkm.rules" >/dev/null
+KERNEL=="pvrsrvkm*", MODE="0666", GROUP="video"
+EOF
+
+        # Device-specific Weston configuration (hardware GL with auto pixman fallback)
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/weston"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/weston/weston.ini" >/dev/null
+[core]
+backend=drm-backend.so
+renderer=auto
+xwayland=true
+
+[shell]
+background-image=/usr/share/wallpapers/postmarketos.jpg
+panel-position=top
+locking=false
+EOF
+
+        # Ensure tinydm environment does not leak LIBGL_ALWAYS_SOFTWARE or invalid EGL_PLATFORM
+        PVR_TINYDM_ENV="$TMP_INJECT/rootfs/etc/tinydm.d/env-wayland.d/pvr-wayland.sh"
+        if [ -f "$PVR_TINYDM_ENV" ]; then
+            if ! grep -q "LIBGL_DRIVERS_PATH" "$PVR_TINYDM_ENV"; then
+                cat << 'EOF' | sudo tee -a "$PVR_TINYDM_ENV" >/dev/null
+
+# Ensure Weston (running as DRM/GBM server) has the correct EGL platform and drivers
+unset EGL_PLATFORM
+unset LIBGL_ALWAYS_SOFTWARE
+export LIBGL_DRIVERS_PATH=/usr/lib/xorg/modules/dri:/usr/lib/dri
+EOF
+            fi
+        fi
+
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
         if [ -f "$TMP_INJECT/rootfs/etc/init.d/sgx-ddk-um" ]; then
             sudo ln -sf /etc/init.d/sgx-ddk-um \

@@ -51,10 +51,45 @@ PVR_TINYDM_ENV="$BUILD_DIR/rootfs/etc/tinydm.d/env-wayland.d/pvr-wayland.sh"
 if [ -f "$PVR_TINYDM_ENV" ]; then
     cat << 'EOF' >> "$PVR_TINYDM_ENV"
 
-# Weston is the Wayland server and must select its DRM/GBM EGL platform.
+# Ensure Weston (running as DRM/GBM server) has the correct EGL platform and drivers
 unset EGL_PLATFORM
+unset LIBGL_ALWAYS_SOFTWARE
+export LIBGL_DRIVERS_PATH=/usr/lib/xorg/modules/dri:/usr/lib/dri
 EOF
 fi
+
+# Provide DRI symlinks so standard DRI lookups resolve PVR driver
+mkdir -p "$BUILD_DIR/rootfs/usr/lib/dri"
+if [ -f "$BUILD_DIR/rootfs/usr/lib/xorg/modules/dri/pvr_dri.so" ]; then
+    ln -sfn ../xorg/modules/dri/pvr_dri.so "$BUILD_DIR/rootfs/usr/lib/dri/pvr_dri.so"
+fi
+if [ -f "$BUILD_DIR/rootfs/usr/lib/xorg/modules/dri/swrast_dri.so" ]; then
+    ln -sfn ../xorg/modules/dri/swrast_dri.so "$BUILD_DIR/rootfs/usr/lib/dri/swrast_dri.so"
+fi
+
+# Ensure kernel module pvrsrvkm auto-loads on boot
+mkdir -p "$BUILD_DIR/rootfs/etc/modules-load.d"
+echo "pvrsrvkm_omap4_sgx540_120" > "$BUILD_DIR/rootfs/etc/modules-load.d/pvrsrvkm.conf"
+
+# Udev permissions for PowerVR SGX GPU device node (allow non-root user session)
+mkdir -p "$BUILD_DIR/rootfs/etc/udev/rules.d"
+cat << 'EOF' > "$BUILD_DIR/rootfs/etc/udev/rules.d/99-pvrsrvkm.rules"
+KERNEL=="pvrsrvkm*", MODE="0666", GROUP="video"
+EOF
+
+# Device-specific Weston configuration (hardware GL with auto pixman fallback)
+mkdir -p "$BUILD_DIR/rootfs/etc/xdg/weston"
+cat << 'EOF' > "$BUILD_DIR/rootfs/etc/xdg/weston/weston.ini"
+[core]
+backend=drm-backend.so
+renderer=auto
+xwayland=true
+
+[shell]
+background-image=/usr/share/wallpapers/postmarketos.jpg
+panel-position=top
+locking=false
+EOF
 
 # APK control scripts are package-manager metadata, not rootfs payload.  If
 # left at / they can collide with protected files from the postmarketOS
