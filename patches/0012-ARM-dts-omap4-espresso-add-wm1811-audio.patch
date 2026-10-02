@@ -92,7 +92,7 @@ index 4d55c0c..53e333a 100644
  };
  
  &uart3 {
-@@ -546,6 +605,27 @@
+@@ -546,6 +605,39 @@
  		interrupt-parent = <&gic>;
  		system-power-controller;
  	};
