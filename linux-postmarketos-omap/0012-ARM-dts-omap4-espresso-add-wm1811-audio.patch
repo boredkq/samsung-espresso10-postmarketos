@@ -66,7 +66,7 @@ index 4d55c0c..53e333a 100644
 +	mcbsp3_pins: pinmux-mcbsp3-pins {
 +		pinctrl-single,pins = <
 +			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)   /* abe_pdm_ul_data.abe_mcbsp3_dr - AP_I2S_DIN */
-+			OMAP4_IOPAD(0x106, PIN_OUTPUT | MUX_MODE1)  /* abe_pdm_dl_data.abe_mcbsp3_dx - AP_I2S_DOUT */
++			OMAP4_IOPAD(0x106, PIN_INPUT | MUX_MODE1)   /* abe_pdm_dl_data.abe_mcbsp3_dx - AP_I2S_DOUT */
 +			OMAP4_IOPAD(0x108, PIN_INPUT | MUX_MODE1)   /* abe_pdm_frame.abe_mcbsp3_clkx - AP_I2S_CLK */
 +			OMAP4_IOPAD(0x10a, PIN_INPUT | MUX_MODE1)   /* abe_pdm_lb_clk.abe_mcbsp3_fsx - AP_I2S_SYNC */
 +		>;

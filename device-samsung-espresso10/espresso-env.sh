@@ -29,6 +29,8 @@ else
 fi
 
 export QT_QPA_PLATFORMTHEME=gtk2
+export MOZ_USE_XINPUT2=1
+export GDK_CORE_DEVICE_EVENTS=1
 
 if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
     export XDG_RUNTIME_DIR="/tmp/$(id -u)-runtime-dir"

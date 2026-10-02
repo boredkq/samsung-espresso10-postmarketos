@@ -56,7 +56,7 @@ diff --git a/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi b/arch/arm/boo
 +	mcbsp3_pins: pinmux-mcbsp3-pins {
 +		pinctrl-single,pins = <
 +			OMAP4_IOPAD(0x104, PIN_INPUT | MUX_MODE1)  /* AP_I2S_DIN */
-+			OMAP4_IOPAD(0x106, PIN_OUTPUT | MUX_MODE1) /* AP_I2S_DOUT */
++			OMAP4_IOPAD(0x106, PIN_INPUT | MUX_MODE1) /* AP_I2S_DOUT */
 +			OMAP4_IOPAD(0x108, PIN_INPUT | MUX_MODE1)  /* AP_I2S_CLK */
 +			OMAP4_IOPAD(0x10a, PIN_INPUT | MUX_MODE1)  /* AP_I2S_SYNC */
 +		>;

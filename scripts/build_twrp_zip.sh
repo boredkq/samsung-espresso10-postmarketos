@@ -7,15 +7,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_PARTITION="${1:-data}"               # По умолчанию: data (12.1 ГБ DATAFS), также: external_sd
-UI="${2:-phosh}"
-# The SGX540 PVRports stack supports Wayland, not an Xorg LXQt/XFCE/MATE
-# session. Map legacy/desktop Xorg inputs to Phosh (Wayland GNOME Mobile/Tablet shell).
+UI="${2:-xfce4}"
+# Map legacy desktop entries or empty UI to xfce4 (optimized lightweight X11 desktop for OMAP4430)
 case "$UI" in
-    lxqt|xfce4|mate)
-        echo "UI '$UI' mapped to Phosh for full Wayland tablet environment."
-        UI="phosh"
+    lxqt|mate|"")
+        echo "UI '$UI' mapped to xfce4 (optimized lightweight X11 desktop for OMAP4430)."
+        UI="xfce4"
         ;;
 esac
+
 USER_NAME="${PMOS_USER:-user}"              # Имя пользователя по умолчанию
 USER_PASSWORD="${PMOS_PASSWORD:-147147}"    # Пароль по умолчанию для входа
 
@@ -101,9 +101,11 @@ pmbootstrap $PMB_FLAGS config ui "$UI"
 pmbootstrap $PMB_FLAGS config user "$USER_NAME"
 
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
-ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"
-if [ "$UI" = "phosh" ]; then
-    ADD_PKGS="$ADD_PKGS,gnome-console"
+ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop,zram-init"
+if [ "$UI" = "xfce4" ]; then
+    ADD_PKGS="$ADD_PKGS,postmarketos-ui-xfce4,onboard,xfce4-whiskermenu-plugin,xfce4-pulseaudio-plugin,xfce4-power-manager,network-manager-applet,firefox-esr,lightdm-gtk-greeter"
+elif [ "$UI" = "phosh" ]; then
+    ADD_PKGS="$ADD_PKGS,gnome-console,firefox-esr"
 fi
 if ! pmbootstrap $PMB_FLAGS -y install \
     --android-recovery-zip \
@@ -142,56 +144,130 @@ if [ -f "$SCRIPT_DIR/scripts/package_pvrports_zip.sh" ]; then
 fi
 
 # Встраивание 3D ускорения PVRports непосредственно в основной образ recovery.zip
-if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" ]; then
+if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ]; then
     echo "================================================================="
-    echo " Встраивание 3D ускорения PVRports в основной образ ОС..."
+    echo " Настройка rootfs и оптимизация системы для samsung-espresso10..."
     echo "================================================================="
     TMP_INJECT="/tmp/pmos_inject_$$"
     sudo rm -rf "$TMP_INJECT"
     mkdir -p "$TMP_INJECT/pmos" "$TMP_INJECT/rootfs" "$TMP_INJECT/pvr"
 
-    if unzip -q "$FINAL_ZIP" "rootfs.tar.gz" -d "$TMP_INJECT/pmos" 2>/dev/null && \
-       unzip -q "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" "files.tar.gz" -d "$TMP_INJECT/pvr" 2>/dev/null; then
-        # Preserve numeric ownership from the original rootfs.  Extracting and
-        # repacking as the GitHub runner changes root-owned paths to UID 1001,
-        # which makes tmpfiles, sshd and wpa_supplicant reject the filesystem.
+    if unzip -q "$FINAL_ZIP" "rootfs.tar.gz" -d "$TMP_INJECT/pmos" 2>/dev/null; then
+        # Preserve numeric ownership from the original rootfs
         sudo tar --numeric-owner -xzf "$TMP_INJECT/pmos/rootfs.tar.gz" \
             -C "$TMP_INJECT/rootfs"
-        sudo tar --numeric-owner -xzf "$TMP_INJECT/pvr/files.tar.gz" \
-            -C "$TMP_INJECT/rootfs"
 
-        # Configure Wayland session for tinydm / greetd
+        # If PVRports 3D acceleration zip is available, merge its files into rootfs
+        if [ -f "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" ] && \
+           unzip -q "$SCRIPT_DIR/output/pvrports-samsung-espresso10-twrp.zip" "files.tar.gz" -d "$TMP_INJECT/pvr" 2>/dev/null; then
+            echo "-> Встраивание 3D файлов PVRports в rootfs..."
+            sudo tar --numeric-owner -xzf "$TMP_INJECT/pvr/files.tar.gz" \
+                -C "$TMP_INJECT/rootfs"
+        fi
+
+        # [1] Оптимизация видеодрайвера Xorg для OMAP4430 (KMS modesetting 24-bit TrueColor)
+        # Удаляем fbdev_drv.so, вызывающий ошибку 'Cannot run in framebuffer mode'
+        sudo rm -f "$TMP_INJECT/rootfs/usr/lib/xorg/modules/drivers/fbdev_drv.so"
+
+        # Устанавливаем эталонный конфиг OMAPDRM без артефактов и зеленого оттенка
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/X11/xorg.conf.d"
+        sudo cp -f "$SCRIPT_DIR/device-samsung-espresso10/10-omapdrm.conf" \
+            "$TMP_INJECT/rootfs/etc/X11/xorg.conf.d/10-omapdrm.conf"
+
+        # [2] Настройка LightDM и автоматического входа в XFCE4
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf.d"
+        cat << EOF | sudo tee "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf.d/50-autologin.conf" >/dev/null
+[Seat:*]
+autologin-user=$USER_NAME
+autologin-user-timeout=0
+autologin-session=xfce
+logind-check-graphical=false
+EOF
+        if [ -f "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf" ]; then
+            sudo sed -i "s|^#*autologin-user=.*|autologin-user=$USER_NAME|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
+            sudo sed -i "s|^#*autologin-session=.*|autologin-session=xfce|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
+            sudo sed -i "s|^#*logind-check-graphical=.*|logind-check-graphical=false|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
+        fi
+
+        # Назначение групп пользователя (доступ к аудио, видео, вводу, правам)
+        if [ -f "$TMP_INJECT/rootfs/etc/group" ]; then
+            if grep -q "^autologin:" "$TMP_INJECT/rootfs/etc/group"; then
+                sudo sed -i "s|^autologin:.*|autologin:x:1001:$USER_NAME|g" "$TMP_INJECT/rootfs/etc/group"
+            else
+                echo "autologin:x:1001:$USER_NAME" | sudo tee -a "$TMP_INJECT/rootfs/etc/group" >/dev/null
+            fi
+            for grp in audio video input wheel dialout disk; do
+                if grep -q "^$grp:" "$TMP_INJECT/rootfs/etc/group"; then
+                    if ! grep "^$grp:" "$TMP_INJECT/rootfs/etc/group" | grep -q "$USER_NAME"; then
+                        sudo sed -i "/^$grp:/ s/$/,$USER_NAME/" "$TMP_INJECT/rootfs/etc/group"
+                        sudo sed -i "s/:,$USER_NAME/:$USER_NAME/" "$TMP_INJECT/rootfs/etc/group"
+                    fi
+                fi
+            done
+        fi
+
+        # [3] Экранная клавиатура Onboard: автозапуск для планшетного интерфейса
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/autostart"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/autostart/onboard.desktop" >/dev/null
+[Desktop Entry]
+Type=Application
+Name=Onboard Virtual Keyboard
+Exec=onboard
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+EOF
+
+        # [4] Сжатый RAM Swap (zram, 768 МБ LZ4) - предотвращает зависания медленной eMMC
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/conf.d"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/conf.d/zram-init" >/dev/null
+num_devices=1
+type0=swap
+size0=768
+algorithm0=lz4
+EOF
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/runlevels/default"
+        if [ -f "$TMP_INJECT/rootfs/etc/init.d/zram-init" ]; then
+            sudo ln -sf /etc/init.d/zram-init \
+                "$TMP_INJECT/rootfs/etc/runlevels/default/zram-init"
+        fi
+
+        # [5] Автоматическая установка комфортной яркости экрана при загрузке
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/local.d"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/local.d/backlight.start" >/dev/null
+#!/bin/sh
+for bl in /sys/class/backlight/*; do
+    if [ -f "$bl/max_brightness" ]; then
+        max=$(cat "$bl/max_brightness")
+        echo $((max * 8 / 10)) > "$bl/brightness" 2>/dev/null || true
+    elif [ -f "$bl/brightness" ]; then
+        echo 7 > "$bl/brightness" 2>/dev/null || true
+    fi
+done
+EOF
+        sudo chmod 0755 "$TMP_INJECT/rootfs/etc/local.d/backlight.start"
+        if [ -f "$TMP_INJECT/rootfs/etc/init.d/local" ]; then
+            sudo ln -sf /etc/init.d/local \
+                "$TMP_INJECT/rootfs/etc/runlevels/default/local"
+        fi
+
+        # [6] Поддержка альтернативных Wayland сессий (Phosh / Weston)
         PHOSH_SESSION="$TMP_INJECT/rootfs/usr/share/wayland-sessions/phosh.desktop"
         WESTON_SESSION="$TMP_INJECT/rootfs/usr/share/wayland-sessions/weston.desktop"
         TINYDM_SESSION_DIR="$TMP_INJECT/rootfs/var/lib/tinydm"
 
-        if [ -f "$PHOSH_SESSION" ]; then
-            echo "Found Phosh Wayland session: $PHOSH_SESSION"
+        if [ "$UI" = "phosh" ] && [ -f "$PHOSH_SESSION" ]; then
             sudo mkdir -p "$TINYDM_SESSION_DIR"
             sudo ln -sfn /usr/share/wayland-sessions/phosh.desktop \
                 "$TINYDM_SESSION_DIR/default-session.desktop"
-            echo "Selected Wayland session: /usr/share/wayland-sessions/phosh.desktop"
-        elif [ -f "$WESTON_SESSION" ]; then
-            echo "Found Weston Wayland session: $WESTON_SESSION"
+        elif [ "$UI" = "weston" ] && [ -f "$WESTON_SESSION" ]; then
             sudo mkdir -p "$TINYDM_SESSION_DIR"
             sudo ln -sfn /usr/share/wayland-sessions/weston.desktop \
                 "$TINYDM_SESSION_DIR/default-session.desktop"
             sudo sed -i 's|^Exec=.*|Exec=dbus-run-session start_weston.sh|g' "$WESTON_SESSION"
-            echo "Selected Wayland session: /usr/share/wayland-sessions/weston.desktop"
-        else
-            echo "Wayland sessions available in rootfs:"
-            sudo find "$TMP_INJECT/rootfs/usr/share/wayland-sessions" \
-                -maxdepth 1 -type f -name '*.desktop' -print 2>/dev/null || true
-            FIRST_SESSION="$(sudo find "$TMP_INJECT/rootfs/usr/share/wayland-sessions" -maxdepth 1 -type f -name '*.desktop' 2>/dev/null | head -n 1)"
-            if [ -n "$FIRST_SESSION" ]; then
-                SESSION_NAME="$(basename "$FIRST_SESSION")"
-                sudo mkdir -p "$TINYDM_SESSION_DIR"
-                sudo ln -sfn "/usr/share/wayland-sessions/$SESSION_NAME" "$TINYDM_SESSION_DIR/default-session.desktop"
-                echo "Selected default Wayland session: /usr/share/wayland-sessions/$SESSION_NAME"
-            fi
         fi
 
-        # For Phosh: wrap phoc compositor so it always uses pixman software rendering on DRM KMS dumb buffers
+        # Обертка phoc для программного рендеринга Wayland при необходимости
         PHOC_BIN="$TMP_INJECT/rootfs/usr/bin/phoc"
         if [ -f "$PHOC_BIN" ] && [ ! -f "$TMP_INJECT/rootfs/usr/bin/phoc.real" ]; then
             sudo mv "$PHOC_BIN" "$TMP_INJECT/rootfs/usr/bin/phoc.real"
@@ -203,10 +279,9 @@ export WLR_NO_HARDWARE_CURSORS=1
 exec /usr/bin/phoc.real "$@"
 EOF
             sudo chmod 0755 "$PHOC_BIN"
-            echo "Wrapped phoc to enforce WLR_RENDERER=pixman and software cursor planes."
         fi
 
-        # Global environment variables for Wayland sessions and software rendering fallback
+        # Переменные окружения для программного рендеринга
         sudo mkdir -p "$TMP_INJECT/rootfs/etc"
         cat << 'EOF' | sudo tee -a "$TMP_INJECT/rootfs/etc/environment" >/dev/null
 WLR_RENDERER=pixman
@@ -214,7 +289,7 @@ WLR_RENDERER_ALLOW_SOFTWARE=1
 WLR_NO_HARDWARE_CURSORS=1
 EOF
 
-        # Ensure latest espresso-env.sh is in rootfs profile.d
+        # [7] Переменные окружения для тачскрина и плавного скролла Firefox / GTK
         if [ -f "$SCRIPT_DIR/device-samsung-espresso10/espresso-env.sh" ]; then
             sudo mkdir -p "$TMP_INJECT/rootfs/etc/profile.d"
             sudo cp -f "$SCRIPT_DIR/device-samsung-espresso10/espresso-env.sh" \
@@ -222,7 +297,7 @@ EOF
             sudo chmod 0755 "$TMP_INJECT/rootfs/etc/profile.d/espresso.sh"
         fi
 
-        # Provide DRI symlinks so standard DRI lookups resolve PVR driver
+        # [8] DRI симлинки и модуль ядра PowerVR SGX540
         sudo mkdir -p "$TMP_INJECT/rootfs/usr/lib/dri"
         if [ -f "$TMP_INJECT/rootfs/usr/lib/xorg/modules/dri/pvr_dri.so" ]; then
             sudo ln -sfn ../xorg/modules/dri/pvr_dri.so "$TMP_INJECT/rootfs/usr/lib/dri/pvr_dri.so"
@@ -231,7 +306,6 @@ EOF
             sudo ln -sfn ../xorg/modules/dri/swrast_dri.so "$TMP_INJECT/rootfs/usr/lib/dri/swrast_dri.so"
         fi
 
-        # Ensure kernel module pvrsrvkm auto-loads on boot for SGX540
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/modules-load.d"
         echo "pvrsrvkm_omap4_sgx540_120" | sudo tee "$TMP_INJECT/rootfs/etc/modules-load.d/pvrsrvkm.conf" >/dev/null
         if [ -f "$TMP_INJECT/rootfs/etc/modules" ]; then
@@ -242,68 +316,25 @@ EOF
             echo "pvrsrvkm_omap4_sgx540_120" | sudo tee "$TMP_INJECT/rootfs/etc/modules" >/dev/null
         fi
 
-        # Udev permissions for PowerVR SGX GPU device node (allow non-root user session)
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/udev/rules.d"
         cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/udev/rules.d/99-pvrsrvkm.rules" >/dev/null
 KERNEL=="pvrsrvkm*", MODE="0666", GROUP="video"
 EOF
 
-        # Device-specific Weston configuration (use-pixman ensures reliable DRM KMS display)
-        sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/weston"
-        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/weston/weston.ini" >/dev/null
-[core]
-backend=drm-backend.so
-use-pixman=true
-xwayland=true
-
-[shell]
-background-image=/usr/share/wallpapers/postmarketos.jpg
-panel-position=top
-locking=false
-EOF
-
-        # Ensure robust start_weston.sh wrapper with automatic fallback
-        sudo mkdir -p "$TMP_INJECT/rootfs/usr/bin"
-        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/usr/bin/start_weston.sh" >/dev/null
-#!/bin/sh
-export DISPLAY=:0
-
-# Create XDG_RUNTIME_DIR
-XDG_RUNTIME_DIR=/tmp/$(id -u)-runtime-dir
-export XDG_RUNTIME_DIR
-if ! test -d "${XDG_RUNTIME_DIR}"; then
-    mkdir -p "${XDG_RUNTIME_DIR}"
-    chmod 0700 "${XDG_RUNTIME_DIR}"
-fi
-
-cfg="/etc/xdg/weston/weston.ini"
-[ -e "$cfg" ] || cfg="$cfg.default"
-
-(
-    for _ in $(seq 0 19); do
-        sleep 0.5
-        postmarketos-demos && break
-    done
-) &
-
-# Launch weston. If it exits with error, retry directly with --use-pixman
-if ! weston --config="$cfg" 2>&1 | logger -t "$(whoami):weston"; then
-    logger -t "$(whoami):weston" "Weston failed to start; retrying with --use-pixman..."
-    exec weston --config="$cfg" --use-pixman 2>&1 | logger -t "$(whoami):weston"
-fi
-EOF
-        sudo chmod 0755 "$TMP_INJECT/rootfs/usr/bin/start_weston.sh"
-
-        # Ensure ALSA UCM2 symlinks for truncated driver name (espresso10-soun)
+        # [9] Звук: ALSA UCM2 конфигурация и симлинки для espresso10-soun
         sudo mkdir -p "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d"
         sudo ln -sfn espresso10-sound "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d/espresso10-soun"
         if [ -d "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d/espresso10-sound" ]; then
             sudo ln -sfn espresso10-sound.conf "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/conf.d/espresso10-sound/espresso10-soun.conf"
         fi
-        sudo mkdir -p "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/omap"
+        sudo mkdir -p "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/omap/espresso10-sound"
         sudo ln -sfn espresso10-sound "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/omap/espresso10-soun"
+        if [ -f "$SCRIPT_DIR/device-samsung-espresso10/HiFi.conf" ]; then
+            sudo cp -f "$SCRIPT_DIR/device-samsung-espresso10/HiFi.conf" \
+                "$TMP_INJECT/rootfs/usr/share/alsa/ucm2/omap/espresso10-sound/HiFi.conf"
+        fi
 
-        # Ensure tinydm environment does not leak LIBGL_ALWAYS_SOFTWARE or invalid EGL_PLATFORM
+        # [10] Проверка tinydm окружения при наличии
         PVR_TINYDM_ENV="$TMP_INJECT/rootfs/etc/tinydm.d/env-wayland.d/pvr-wayland.sh"
         if [ -f "$PVR_TINYDM_ENV" ]; then
             if ! grep -q "LIBGL_DRIVERS_PATH" "$PVR_TINYDM_ENV"; then
@@ -326,6 +357,7 @@ EOF
                 "$TMP_INJECT/rootfs/etc/runlevels/default/sgx-ddk-um"
         fi
 
+        # Проверка прав доступа root на ключевые директории
         for critical_path in . tmp dev run var/empty; do
             path="$TMP_INJECT/rootfs/$critical_path"
             if [ -e "$path" ] && [ "$(sudo stat -c '%u' "$path")" != "0" ]; then
@@ -334,6 +366,7 @@ EOF
             fi
         done
 
+        # Упаковка rootfs.tar.gz и сохранение в ZIP без сжатия (STORED / zip -0 для TWRP)
         (cd "$TMP_INJECT/rootfs" && \
             sudo tar --numeric-owner -czf "$TMP_INJECT/pmos/rootfs.tar.gz" .)
         (cd "$TMP_INJECT/pmos" && zip -0 -q "$FINAL_ZIP" rootfs.tar.gz)
@@ -346,9 +379,9 @@ with zipfile.ZipFile('$FINAL_ZIP', 'r') as z:
         sys.exit(1)
     print(f'Verified: rootfs.tar.gz is stored uncompressed (ZIP_STORED, {info.file_size} bytes)')
 "
-        echo "-> 3D ускорение PVRports успешно интегрировано в $FINAL_ZIP!"
+        echo "-> Оптимизации rootfs успешно интегрированы в $FINAL_ZIP!"
     else
-        echo "ERROR: unable to inject PVRports userspace into $FINAL_ZIP" >&2
+        echo "ERROR: unable to unpack rootfs.tar.gz from $FINAL_ZIP" >&2
         exit 1
     fi
     sudo rm -rf "$TMP_INJECT"
