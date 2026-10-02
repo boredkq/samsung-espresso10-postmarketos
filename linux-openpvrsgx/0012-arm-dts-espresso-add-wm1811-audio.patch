@@ -83,7 +83,7 @@ diff --git a/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi b/arch/arm/boo
  	bluetooth_pins: pinmux_bluetooth_pins {
  		pinctrl-single,pins = <
  			OMAP4_IOPAD(0x094, PIN_OUTPUT | MUX_MODE3)
-@@ -512,10 +569,36 @@
+@@ -512,10 +569,50 @@
  			ti,system-power-controller;
  		};
  	};
@@ -115,6 +115,19 @@ diff --git a/arch/arm/boot/dts/omap4-samsung-espresso-common.dtsi b/arch/arm/boo
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mcbsp3_pins>;
 +	#sound-dai-cells = <0>;
++};
++
++&cpu0 {
++	/* Overclocking OPP table for TI OMAP4430 Cortex-A9 */
++	operating-points = <
++		/* kHz    uV */
++		300000  1025000
++		600000  1200000
++		800000  1313000
++		1008000 1375000
++		1200000 1388000
++		1350000 1410000
++	>;
 +};
 +
  &i2c2 {

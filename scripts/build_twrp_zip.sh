@@ -7,14 +7,34 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_PARTITION="${1:-data}"               # По умолчанию: data (12.1 ГБ DATAFS), также: external_sd
-UI="${2:-xfce4}"
-# Map legacy desktop entries or empty UI to xfce4 (optimized lightweight X11 desktop for OMAP4430)
+UI="${2:-openbox}"
+TARGET_SESSION="openbox"
+PMB_UI="xfce4"
+
 case "$UI" in
-    lxqt|mate|"")
-        echo "UI '$UI' mapped to xfce4 (optimized lightweight X11 desktop for OMAP4430)."
-        UI="xfce4"
+    openbox|lxqt|mate|"")
+        echo "UI '$UI' mapped to Openbox + tint2 (рекордно быстрый X11 интерфейс, ~35 МБ RAM)."
+        UI="openbox"
+        TARGET_SESSION="openbox"
+        PMB_UI="xfce4"
+        ;;
+    xfce4)
+        echo "UI '$UI' selected: XFCE4 desktop."
+        TARGET_SESSION="xfce"
+        PMB_UI="xfce4"
+        ;;
+    phosh)
+        echo "UI '$UI' selected: Phosh Wayland desktop."
+        TARGET_SESSION="phosh"
+        PMB_UI="phosh"
+        ;;
+    weston)
+        echo "UI '$UI' selected: Weston Wayland."
+        TARGET_SESSION="weston"
+        PMB_UI="weston"
         ;;
 esac
+
 
 USER_NAME="${PMOS_USER:-user}"              # Имя пользователя по умолчанию
 USER_PASSWORD="${PMOS_PASSWORD:-147147}"    # Пароль по умолчанию для входа
@@ -49,7 +69,7 @@ cat << EOF > "$CONFIG_DIR/pmbootstrap_v3.cfg"
 work = $WORK_DIR
 aports = $PMAPORTS_DIR
 device = samsung-espresso10
-ui = $UI
+ui = $PMB_UI
 user = $USER_NAME
 is_release = False
 jobs = $(nproc 2>/dev/null || echo 4)
@@ -97,14 +117,14 @@ echo "[3/5] Сборка пакета устройства device-samsung-espres
 pmbootstrap $PMB_FLAGS -y build --arch=armv7 device-samsung-espresso10
 
 pmbootstrap $PMB_FLAGS config device samsung-espresso10
-pmbootstrap $PMB_FLAGS config ui "$UI"
+pmbootstrap $PMB_FLAGS config ui "$PMB_UI"
 pmbootstrap $PMB_FLAGS config user "$USER_NAME"
 
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
-ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop,zram-init"
-if [ "$UI" = "xfce4" ]; then
+ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,volumeicon,evtest,htop,zram-init,openbox,tint2,obconf,feh"
+if [ "$PMB_UI" = "xfce4" ]; then
     ADD_PKGS="$ADD_PKGS,postmarketos-ui-xfce4,onboard,xfce4-whiskermenu-plugin,xfce4-pulseaudio-plugin,xfce4-power-manager,network-manager-applet,firefox-esr,lightdm-gtk-greeter"
-elif [ "$UI" = "phosh" ]; then
+elif [ "$PMB_UI" = "phosh" ]; then
     ADD_PKGS="$ADD_PKGS,gnome-console,firefox-esr"
 fi
 if ! pmbootstrap $PMB_FLAGS -y install \
@@ -174,18 +194,18 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ]; then
         sudo cp -f "$SCRIPT_DIR/device-samsung-espresso10/10-omapdrm.conf" \
             "$TMP_INJECT/rootfs/etc/X11/xorg.conf.d/10-omapdrm.conf"
 
-        # [2] Настройка LightDM и автоматического входа в XFCE4
+        # [2] Настройка LightDM и автоматического входа в $TARGET_SESSION
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf.d"
         cat << EOF | sudo tee "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf.d/50-autologin.conf" >/dev/null
 [Seat:*]
 autologin-user=$USER_NAME
 autologin-user-timeout=0
-autologin-session=xfce
+autologin-session=$TARGET_SESSION
 logind-check-graphical=false
 EOF
         if [ -f "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf" ]; then
             sudo sed -i "s|^#*autologin-user=.*|autologin-user=$USER_NAME|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
-            sudo sed -i "s|^#*autologin-session=.*|autologin-session=xfce|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
+            sudo sed -i "s|^#*autologin-session=.*|autologin-session=$TARGET_SESSION|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
             sudo sed -i "s|^#*logind-check-graphical=.*|logind-check-graphical=false|g" "$TMP_INJECT/rootfs/etc/lightdm/lightdm.conf"
         fi
 
@@ -205,6 +225,127 @@ EOF
                 fi
             done
         fi
+
+        # [2.5] Настройка сверхбыстрого окружения Openbox + tint2 для планшета
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/openbox"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/openbox/autostart" >/dev/null
+#!/bin/sh
+xsetroot -solid "#1e272e" &
+tint2 &
+volumeicon &
+nm-applet &
+onboard &
+EOF
+        sudo chmod 0755 "$TMP_INJECT/rootfs/etc/xdg/openbox/autostart"
+
+        # Меню Openbox для тачскрина
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/openbox/menu.xml" >/dev/null
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Tablet Menu">
+    <item label="🌐 Web Browser (Firefox)">
+      <action name="Execute"><command>firefox</command></action>
+    </item>
+    <item label="⌨️ On-Screen Keyboard">
+      <action name="Execute"><command>onboard</command></action>
+    </item>
+    <item label="💻 Terminal">
+      <action name="Execute"><command>xfce4-terminal</command></action>
+    </item>
+    <item label="📁 File Manager">
+      <action name="Execute"><command>thunar</command></action>
+    </item>
+    <item label="🔊 Volume Control">
+      <action name="Execute"><command>pavucontrol</command></action>
+    </item>
+    <separator />
+    <item label="⚙️ Openbox Settings">
+      <action name="Execute"><command>obconf</command></action>
+    </item>
+    <item label="🖥️ Switch to XFCE4 Session">
+      <action name="Execute"><command>xfce4-session</command></action>
+    </item>
+    <separator />
+    <item label="🔄 Reboot">
+      <action name="Execute"><command>reboot</command></action>
+    </item>
+    <item label="🛑 Power Off">
+      <action name="Execute"><command>poweroff</command></action>
+    </item>
+  </menu>
+</openbox_menu>
+EOF
+
+        # Конфигурация панели tint2 под пальцы (высота 46px)
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/tint2"
+        cat << 'EOF' | sudo tee "$TMP_INJECT/rootfs/etc/xdg/tint2/tint2rc" >/dev/null
+panel_monitor = all
+panel_position = bottom center horizontal
+panel_size = 100% 46
+panel_margin = 0 0
+panel_padding = 6 4 4
+panel_background_id = 1
+panel_dock = 0
+panel_layer = top
+
+rounded = 0
+border_width = 0
+background_color = #181c24 95
+border_color = #2c3440 100
+
+rounded = 4
+border_width = 1
+background_color = #2d3748 100
+border_color = #4a5568 100
+
+launcher_padding = 6 4 6
+launcher_background_id = 0
+launcher_icon_size = 32
+launcher_item_app = /usr/share/applications/firefox.desktop
+launcher_item_app = /usr/share/applications/onboard.desktop
+launcher_item_app = /usr/share/applications/xfce4-terminal.desktop
+launcher_item_app = /usr/share/applications/pavucontrol.desktop
+
+taskbar_mode = single_desktop
+taskbar_padding = 4 2 4
+taskbar_background_id = 0
+taskbar_active_background_id = 2
+task_icon = 1
+task_text = 1
+task_centered = 1
+task_maximum_size = 220 38
+task_padding = 6 3
+task_font = Sans Bold 11
+task_font_color = #e2e8f0 100
+task_active_font_color = #63b3ed 100
+
+systray_padding = 6 4 6
+systray_background_id = 0
+systray_sort = ascending
+systray_icon_size = 28
+systray_icon_asb = 100 0 0
+
+time1_format = %H:%M
+time2_format = %d %b
+time1_font = Sans Bold 12
+time2_font = Sans 9
+clock_font_color = #ffffff 100
+clock_padding = 6 2
+clock_background_id = 0
+EOF
+
+        # Копирование настроек в домашнюю папку пользователя
+        USER_HOME="$TMP_INJECT/rootfs/home/$USER_NAME"
+        if [ -d "$USER_HOME" ]; then
+            sudo mkdir -p "$USER_HOME/.config/openbox" "$USER_HOME/.config/tint2"
+            sudo cp -f "$TMP_INJECT/rootfs/etc/xdg/openbox/autostart" "$USER_HOME/.config/openbox/autostart"
+            sudo cp -f "$TMP_INJECT/rootfs/etc/xdg/openbox/menu.xml" "$USER_HOME/.config/openbox/menu.xml"
+            sudo cp -f "$TMP_INJECT/rootfs/etc/xdg/tint2/tint2rc" "$USER_HOME/.config/tint2/tint2rc"
+            USER_UID="$(sudo stat -c '%u' "$USER_HOME" 2>/dev/null || echo 10000)"
+            USER_GID="$(sudo stat -c '%g' "$USER_HOME" 2>/dev/null || echo 10000)"
+            sudo chown -R "$USER_UID:$USER_GID" "$USER_HOME/.config" 2>/dev/null || true
+        fi
+
 
         # [3] Экранная клавиатура Onboard: автозапуск для планшетного интерфейса
         sudo mkdir -p "$TMP_INJECT/rootfs/etc/xdg/autostart"

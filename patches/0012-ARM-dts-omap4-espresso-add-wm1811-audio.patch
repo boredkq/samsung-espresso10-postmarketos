@@ -117,6 +117,19 @@ index 4d55c0c..53e333a 100644
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&mcbsp3_pins>;
 +	#sound-dai-cells = <0>;
++};
++
++&cpu0 {
++	/* Overclocking OPP table for TI OMAP4430 Cortex-A9 */
++	operating-points = <
++		/* kHz    uV */
++		300000  1025000
++		600000  1200000
++		800000  1313000
++		1008000 1375000
++		1200000 1388000
++		1350000 1410000
++	>;
  };
  
  #include "twl6032.dtsi"
