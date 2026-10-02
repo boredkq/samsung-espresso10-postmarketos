@@ -7,14 +7,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_PARTITION="${1:-data}"               # По умолчанию: data (12.1 ГБ DATAFS), также: external_sd
-UI="${2:-weston}"
+UI="${2:-phosh}"
 # The SGX540 PVRports stack supports Wayland, not an Xorg LXQt/XFCE/MATE
-# session.  Keep accepting the historical CI input, but build a usable
-# Weston image instead of booting back to the console after LightDM starts.
+# session. Map legacy/desktop Xorg inputs to Phosh (Wayland GNOME Mobile/Tablet shell).
 case "$UI" in
     lxqt|xfce4|mate)
-        echo "UI '$UI' uses Xorg and is unsupported by PVRports; using Weston."
-        UI="weston"
+        echo "UI '$UI' mapped to Phosh for full Wayland tablet environment."
+        UI="phosh"
         ;;
 esac
 USER_NAME="${PMOS_USER:-user}"              # Имя пользователя по умолчанию
@@ -102,11 +101,15 @@ pmbootstrap $PMB_FLAGS config ui "$UI"
 pmbootstrap $PMB_FLAGS config user "$USER_NAME"
 
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
+ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"
+if [ "$UI" = "phosh" ]; then
+    ADD_PKGS="$ADD_PKGS,gnome-console"
+fi
 if ! pmbootstrap $PMB_FLAGS -y install \
     --android-recovery-zip \
     --recovery-install-partition="$TARGET_PARTITION" \
     --password="$USER_PASSWORD" \
-    --add="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop"; then
+    --add="$ADD_PKGS"; then
     echo "================================================================="
     echo "PMBOOTSTRAP INSTALL LOG (LAST 2000 LINES):"
     echo "================================================================="
@@ -157,26 +160,67 @@ if [ -n "${FINAL_ZIP:-}" ] && [ -f "$FINAL_ZIP" ] && [ -f "$SCRIPT_DIR/output/pv
         sudo tar --numeric-owner -xzf "$TMP_INJECT/pvr/files.tar.gz" \
             -C "$TMP_INJECT/rootfs"
 
-        # pmbootstrap's Weston UI package can leave tinydm without a selected
-        # session. In that case tinydm starts, exits immediately, and the tablet
-        # remains at the tty login prompt. Select the packaged Weston session
-        # explicitly in the final rootfs (after all APK post-install scripts).
+        # Configure Wayland session for tinydm / greetd
+        PHOSH_SESSION="$TMP_INJECT/rootfs/usr/share/wayland-sessions/phosh.desktop"
         WESTON_SESSION="$TMP_INJECT/rootfs/usr/share/wayland-sessions/weston.desktop"
         TINYDM_SESSION_DIR="$TMP_INJECT/rootfs/var/lib/tinydm"
-        if [ ! -f "$WESTON_SESSION" ]; then
-            echo "ERROR: Weston session desktop file is missing: $WESTON_SESSION" >&2
-            echo "Available Wayland sessions:" >&2
+
+        if [ -f "$PHOSH_SESSION" ]; then
+            echo "Found Phosh Wayland session: $PHOSH_SESSION"
+            sudo mkdir -p "$TINYDM_SESSION_DIR"
+            sudo ln -sfn /usr/share/wayland-sessions/phosh.desktop \
+                "$TINYDM_SESSION_DIR/default-session.desktop"
+            echo "Selected Wayland session: /usr/share/wayland-sessions/phosh.desktop"
+        elif [ -f "$WESTON_SESSION" ]; then
+            echo "Found Weston Wayland session: $WESTON_SESSION"
+            sudo mkdir -p "$TINYDM_SESSION_DIR"
+            sudo ln -sfn /usr/share/wayland-sessions/weston.desktop \
+                "$TINYDM_SESSION_DIR/default-session.desktop"
+            sudo sed -i 's|^Exec=.*|Exec=dbus-run-session start_weston.sh|g' "$WESTON_SESSION"
+            echo "Selected Wayland session: /usr/share/wayland-sessions/weston.desktop"
+        else
+            echo "Wayland sessions available in rootfs:"
             sudo find "$TMP_INJECT/rootfs/usr/share/wayland-sessions" \
                 -maxdepth 1 -type f -name '*.desktop' -print 2>/dev/null || true
-            exit 1
+            FIRST_SESSION="$(sudo find "$TMP_INJECT/rootfs/usr/share/wayland-sessions" -maxdepth 1 -type f -name '*.desktop' 2>/dev/null | head -n 1)"
+            if [ -n "$FIRST_SESSION" ]; then
+                SESSION_NAME="$(basename "$FIRST_SESSION")"
+                sudo mkdir -p "$TINYDM_SESSION_DIR"
+                sudo ln -sfn "/usr/share/wayland-sessions/$SESSION_NAME" "$TINYDM_SESSION_DIR/default-session.desktop"
+                echo "Selected default Wayland session: /usr/share/wayland-sessions/$SESSION_NAME"
+            fi
         fi
-        sudo mkdir -p "$TINYDM_SESSION_DIR"
-        sudo ln -sfn /usr/share/wayland-sessions/weston.desktop \
-            "$TINYDM_SESSION_DIR/default-session.desktop"
-        if [ -f "$WESTON_SESSION" ]; then
-            sudo sed -i 's|^Exec=.*|Exec=dbus-run-session start_weston.sh|g' "$WESTON_SESSION"
+
+        # For Phosh: wrap phoc compositor so it always uses pixman software rendering on DRM KMS dumb buffers
+        PHOC_BIN="$TMP_INJECT/rootfs/usr/bin/phoc"
+        if [ -f "$PHOC_BIN" ] && [ ! -f "$TMP_INJECT/rootfs/usr/bin/phoc.real" ]; then
+            sudo mv "$PHOC_BIN" "$TMP_INJECT/rootfs/usr/bin/phoc.real"
+            cat << 'EOF' | sudo tee "$PHOC_BIN" >/dev/null
+#!/bin/sh
+export WLR_RENDERER=pixman
+export WLR_RENDERER_ALLOW_SOFTWARE=1
+export WLR_NO_HARDWARE_CURSORS=1
+exec /usr/bin/phoc.real "$@"
+EOF
+            sudo chmod 0755 "$PHOC_BIN"
+            echo "Wrapped phoc to enforce WLR_RENDERER=pixman and software cursor planes."
         fi
-        echo "Selected tinydm session: /usr/share/wayland-sessions/weston.desktop"
+
+        # Global environment variables for Wayland sessions and software rendering fallback
+        sudo mkdir -p "$TMP_INJECT/rootfs/etc"
+        cat << 'EOF' | sudo tee -a "$TMP_INJECT/rootfs/etc/environment" >/dev/null
+WLR_RENDERER=pixman
+WLR_RENDERER_ALLOW_SOFTWARE=1
+WLR_NO_HARDWARE_CURSORS=1
+EOF
+
+        # Ensure latest espresso-env.sh is in rootfs profile.d
+        if [ -f "$SCRIPT_DIR/device-samsung-espresso10/espresso-env.sh" ]; then
+            sudo mkdir -p "$TMP_INJECT/rootfs/etc/profile.d"
+            sudo cp -f "$SCRIPT_DIR/device-samsung-espresso10/espresso-env.sh" \
+                "$TMP_INJECT/rootfs/etc/profile.d/espresso.sh"
+            sudo chmod 0755 "$TMP_INJECT/rootfs/etc/profile.d/espresso.sh"
+        fi
 
         # Provide DRI symlinks so standard DRI lookups resolve PVR driver
         sudo mkdir -p "$TMP_INJECT/rootfs/usr/lib/dri"
@@ -265,10 +309,13 @@ EOF
             if ! grep -q "LIBGL_DRIVERS_PATH" "$PVR_TINYDM_ENV"; then
                 cat << 'EOF' | sudo tee -a "$PVR_TINYDM_ENV" >/dev/null
 
-# Ensure Weston (running as DRM/GBM server) has the correct EGL platform and drivers
+# Ensure Wayland sessions have the correct EGL platform, drivers, and pixman fallback
 unset EGL_PLATFORM
 unset LIBGL_ALWAYS_SOFTWARE
 export LIBGL_DRIVERS_PATH=/usr/lib/xorg/modules/dri:/usr/lib/dri
+export WLR_RENDERER=pixman
+export WLR_RENDERER_ALLOW_SOFTWARE=1
+export WLR_NO_HARDWARE_CURSORS=1
 EOF
             fi
         fi
@@ -338,5 +385,5 @@ echo "3. В TWRP:"
 echo "   - Очистка (Wipe): Wipe -> Advanced Wipe -> System, Data, Cache"
 echo "   - Установка (Install): выберите ZIP-архив и свайпните для прошивки"
 echo "   - Перезагрузка (Reboot System)"
-echo "Логин по умолчанию: $USER_NAME | Пароль: $USER_PASSWORD"
+echo "Логин по умолчанию: $USER_NAME | Пароль / PIN экрана блокировки: $USER_PASSWORD"
 echo "================================================================="

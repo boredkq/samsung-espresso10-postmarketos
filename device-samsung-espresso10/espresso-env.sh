@@ -14,10 +14,16 @@ if { [ -e /dev/pvrsrvkm ] || find /lib/modules /usr/lib/modules -type f -name 'p
     unset EGL_PLATFORM
     export __GLX_VENDOR_LIBRARY_NAME=amber
     export PVR_3D_ACCELERATION=1
+    # Compositors (wlroots/phoc) must use pixman on KMS dumb buffers
+    export WLR_RENDERER=pixman
+    export WLR_RENDERER_ALLOW_SOFTWARE=1
+    export WLR_NO_HARDWARE_CURSORS=1
 else
     # Fallback to 2D-optimized software rasterizer if PVRports is not installed
     export LIBGL_ALWAYS_SOFTWARE=1
     export WLR_RENDERER=pixman
+    export WLR_RENDERER_ALLOW_SOFTWARE=1
+    export WLR_NO_HARDWARE_CURSORS=1
     export QT_QUICK_BACKEND=software
     export MESA_LOADER_DRIVER_OVERRIDE=swrast
 fi
