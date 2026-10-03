@@ -101,12 +101,15 @@ echo "Обновление контрольных сумм пакетов..."
 pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 
 # Проверка наличия уже скомпилированного пакета ядра (в кэше CI или в GitHub Releases)
+sudo mkdir -p "$WORK_DIR/packages" 2>/dev/null || mkdir -p "$WORK_DIR/packages" || true
+sudo chown -R $(id -u):$(id -g) "$WORK_DIR/packages" 2>/dev/null || true
 KERNEL_APK=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
 
 if [ -z "$KERNEL_APK" ] || [ ! -f "$KERNEL_APK" ]; then
     echo "Пакет ядра не найден в локальном кэше. Проверка наличия в GitHub Releases..."
     if command -v gh &>/dev/null; then
-        mkdir -p "$WORK_DIR/packages/edge/armv7"
+        sudo mkdir -p "$WORK_DIR/packages/edge/armv7"
+        sudo chown -R $(id -u):$(id -g) "$WORK_DIR/packages" 2>/dev/null || true
         if gh release download latest -p "linux-openpvrsgx-*.apk" -D "$WORK_DIR/packages/edge/armv7" 2>/dev/null; then
             KERNEL_APK=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
             if [ -n "$KERNEL_APK" ] && [ -f "$KERNEL_APK" ]; then
@@ -121,7 +124,7 @@ if [ -n "$KERNEL_APK" ] && [ -f "$KERNEL_APK" ]; then
     echo " НАЙДЕНО ГОТОВОЕ СКОМПИЛИРОВАННОЕ ЯДРО: $KERNEL_APK"
     echo " Пропуск 40-минутной компиляции ядра Linux OMAP (экономия минут CI)!"
     echo "================================================================="
-    touch "$KERNEL_APK"
+    sudo touch "$KERNEL_APK" 2>/dev/null || touch "$KERNEL_APK"
     pmbootstrap $PMB_FLAGS index --arch=armv7 || true
 else
     echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и разгоном..."

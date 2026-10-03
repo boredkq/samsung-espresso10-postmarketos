@@ -14,7 +14,6 @@ on:
   push:
     branches:
       - main
-      - fix_samsung_espresso10_port
     paths-ignore:
       - '**.md'
       - '.gitignore'
