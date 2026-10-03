@@ -121,7 +121,7 @@ pmbootstrap $PMB_FLAGS config ui "$PMB_UI"
 pmbootstrap $PMB_FLAGS config user "$USER_NAME"
 
 echo "[4/5] Генерация TWRP flashable zip (раздел: $TARGET_PARTITION)..."
-ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,volumeicon,evtest,htop,zram-init,openbox,tint2,obconf,feh"
+ADD_PKGS="alsa-utils,pulseaudio,pulseaudio-utils,pavucontrol,evtest,htop,zram-init,openbox,tint2,feh"
 if [ "$PMB_UI" = "xfce4" ]; then
     ADD_PKGS="$ADD_PKGS,postmarketos-ui-xfce4,onboard,xfce4-whiskermenu-plugin,xfce4-pulseaudio-plugin,xfce4-power-manager,network-manager-applet,firefox-esr,lightdm-gtk-greeter"
 elif [ "$PMB_UI" = "phosh" ]; then
@@ -232,7 +232,6 @@ EOF
 #!/bin/sh
 xsetroot -solid "#1e272e" &
 tint2 &
-volumeicon &
 nm-applet &
 onboard &
 EOF
@@ -259,9 +258,6 @@ EOF
       <action name="Execute"><command>pavucontrol</command></action>
     </item>
     <separator />
-    <item label="⚙️ Openbox Settings">
-      <action name="Execute"><command>obconf</command></action>
-    </item>
     <item label="🖥️ Switch to XFCE4 Session">
       <action name="Execute"><command>xfce4-session</command></action>
     </item>
