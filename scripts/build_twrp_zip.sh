@@ -102,14 +102,14 @@ pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 
 # Проверка наличия уже скомпилированного пакета ядра (в кэше CI или в GitHub Releases)
 sudo mkdir -p "$WORK_DIR/packages" 2>/dev/null || mkdir -p "$WORK_DIR/packages" || true
-sudo chown -R $(id -u):$(id -g) "$WORK_DIR/packages" 2>/dev/null || true
+sudo chmod -R 777 "$WORK_DIR/packages" 2>/dev/null || true
 KERNEL_APK=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
 
 if [ -z "$KERNEL_APK" ] || [ ! -f "$KERNEL_APK" ]; then
     echo "Пакет ядра не найден в локальном кэше. Проверка наличия в GitHub Releases..."
     if command -v gh &>/dev/null; then
         sudo mkdir -p "$WORK_DIR/packages/edge/armv7"
-        sudo chown -R $(id -u):$(id -g) "$WORK_DIR/packages" 2>/dev/null || true
+        sudo chmod -R 777 "$WORK_DIR/packages" 2>/dev/null || true
         if gh release download latest -p "linux-openpvrsgx-*.apk" -D "$WORK_DIR/packages/edge/armv7" 2>/dev/null; then
             KERNEL_APK=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
             if [ -n "$KERNEL_APK" ] && [ -f "$KERNEL_APK" ]; then
