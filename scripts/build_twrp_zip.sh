@@ -98,19 +98,44 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 echo "Обновление контрольных сумм пакетов..."
-pmbootstrap $PMB_FLAGS checksum linux-openpvrsgx
 pmbootstrap $PMB_FLAGS checksum device-samsung-espresso10
 
-echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и фиксом Wi-Fi..."
-if ! pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-openpvrsgx; then
+# Проверка наличия уже скомпилированного пакета ядра (в кэше CI или в GitHub Releases)
+KERNEL_APK=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
+
+if [ -z "$KERNEL_APK" ] || [ ! -f "$KERNEL_APK" ]; then
+    echo "Пакет ядра не найден в локальном кэше. Проверка наличия в GitHub Releases..."
+    if command -v gh &>/dev/null; then
+        mkdir -p "$WORK_DIR/packages/edge/armv7"
+        if gh release download latest -p "linux-openpvrsgx-*.apk" -D "$WORK_DIR/packages/edge/armv7" 2>/dev/null; then
+            KERNEL_APK=$(find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" 2>/dev/null | head -n 1 || true)
+            if [ -n "$KERNEL_APK" ] && [ -f "$KERNEL_APK" ]; then
+                echo "-> Успешно загружен готовый пакет ядра из GitHub Releases: $KERNEL_APK"
+            fi
+        fi
+    fi
+fi
+
+if [ -n "$KERNEL_APK" ] && [ -f "$KERNEL_APK" ]; then
     echo "================================================================="
-    echo "PMBOOTSTRAP COMPILER DIAGNOSTICS:"
-    grep -aEin 'error:|fatal error:|undefined reference|No rule to make|Killed signal|Error [0-9]+|ERROR:' \
-        "$WORK_DIR/log.txt" | tail -n 200 || true
-    echo "PMBOOTSTRAP LOG (LAST 300 LINES):"
+    echo " НАЙДЕНО ГОТОВОЕ СКОМПИЛИРОВАННОЕ ЯДРО: $KERNEL_APK"
+    echo " Пропуск 40-минутной компиляции ядра Linux OMAP (экономия минут CI)!"
     echo "================================================================="
-    tail -n 300 "$WORK_DIR/log.txt" || true
-    exit 1
+    touch "$KERNEL_APK"
+    pmbootstrap $PMB_FLAGS index --arch=armv7 || true
+else
+    echo "[2/5] Сборка ядра Linux OMAP 7.1.5 с поддержкой WM1811 и разгоном..."
+    pmbootstrap $PMB_FLAGS checksum linux-openpvrsgx
+    if ! pmbootstrap $PMB_FLAGS -y build --arch=armv7 linux-openpvrsgx; then
+        echo "================================================================="
+        echo "PMBOOTSTRAP COMPILER DIAGNOSTICS:"
+        grep -aEin 'error:|fatal error:|undefined reference|No rule to make|Killed signal|Error [0-9]+|ERROR:' \
+            "$WORK_DIR/log.txt" | tail -n 200 || true
+        echo "PMBOOTSTRAP LOG (LAST 300 LINES):"
+        echo "================================================================="
+        tail -n 300 "$WORK_DIR/log.txt" || true
+        exit 1
+    fi
 fi
 
 echo "[3/5] Сборка пакета устройства device-samsung-espresso10..."
@@ -155,6 +180,8 @@ if [ -n "$ZIP_FILE" ] && [ -e "$ZIP_FILE" ]; then
     echo " СБОРКА УСПЕШНО ЗАВЕРШЕНА!"
     echo " Файл для TWRP (полная ОС): $FINAL_ZIP"
     echo " Размер: $(du -h "$FINAL_ZIP" | cut -f1)"
+    # Экспорт скомпилированного пакета ядра в output/ для сохранения в релизах
+    find "$WORK_DIR/packages" -name "linux-openpvrsgx-*.apk" -exec cp -f {} "$SCRIPT_DIR/output/" \; 2>/dev/null || true
 fi
 
 # Сборка отдельного TWRP ZIP с 3D аппаратным ускорением PVRports (SGX540)

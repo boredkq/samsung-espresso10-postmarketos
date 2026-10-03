@@ -13,9 +13,15 @@ on:
         default: 'weston'
   push:
     branches:
-      - fix_samsung_espresso10_port
       - main
-      - master
+      - fix_samsung_espresso10_port
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -59,7 +65,7 @@ jobs:
             ~/.local/var/pmbootstrap/cache_git
             ~/.local/var/pmbootstrap/config_abuild
             ~/.config/abuild
-          key: pmbootstrap-cache-${{ runner.os }}-${{ hashFiles('linux-postmarketos-omap/**', 'device-samsung-espresso10/**') }}
+          key: pmbootstrap-cache-${{ runner.os }}-${{ hashFiles('linux-openpvrsgx/**') }}
           restore-keys: |
             pmbootstrap-cache-${{ runner.os }}-
 
@@ -78,6 +84,17 @@ jobs:
           chmod +x scripts/build_twrp_zip.sh
           ./scripts/build_twrp_zip.sh "${{ github.event.inputs.partition || 'data' }}" "${{ github.event.inputs.ui || 'lxqt' }}"
 
+      - name: Prepare pmbootstrap cache for saving
+        if: always()
+        run: |
+          # Fix ownership and permissions on root-created files (like config_abuild/*.rsa)
+          # so actions/cache post-job tar does not fail with "Permission denied"
+          sudo chown -R $(id -u):$(id -g) ~/.local/var/pmbootstrap ~/.config/abuild 2>/dev/null || true
+          sudo chmod -R u+rwX,go+rX ~/.local/var/pmbootstrap ~/.config/abuild 2>/dev/null || true
+          # Remove socket files and locks that break tar
+          find ~/.local/var/pmbootstrap -type s -delete 2>/dev/null || true
+          find ~/.local/var/pmbootstrap -name "*.lock" -delete 2>/dev/null || true
+
       - name: Upload pmbootstrap failure log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -92,7 +109,9 @@ jobs:
         continue-on-error: true
         with:
           name: pmos-samsung-espresso10-twrp-zip
-          path: output/*.zip
+          path: |
+            output/*.zip
+            output/*.apk
           retention-days: 3
           if-no-files-found: error
 
@@ -102,6 +121,8 @@ jobs:
           tag_name: latest
           name: "postmarketOS & Ubuntu Touch TWRP Builds"
           body: "Flashable TWRP recovery ZIP images for Samsung Galaxy Tab 2 10.1 (espresso10 / p5100 / p5110)."
-          files: output/*.zip
+          files: |
+            output/*.zip
+            output/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
